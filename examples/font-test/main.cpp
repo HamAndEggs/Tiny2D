@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <time.h>
 #include <signal.h>
+#include <unistd.h>
 
 #include "framebuffer.h"
 
@@ -30,43 +31,35 @@ int main(int argc, char *argv[])
 
 	srand(time(NULL));
 
-	FB->ClearScreen(0,0,0);
 
 	uint8_t col[8][3] = {{0,0,0},{255,0,0},{0,255,0},{0,0,255},{255,255,255},{255,0,255},{255,255,0},{0,255,255}};
-	
+
+	FB->ClearScreen(150,150,150);
+
+	FBIO::Font TheFont;
+	FBIO::Button TheButton(100,100,150,50,"This is a button");
+	FBIO::Button GreenButton(200,200,150,50,"A green button");
+	GreenButton.SetColour(30,150,30);
+
+	TheFont.SetPenColour(0,0,0);
+
+	int n = 149;
+	timespec SleepTime = {0,10000000};
 	while(KeepGoing)
 	{
+		FB->DrawRectangle(0,0,300,13,150,150,150,true);
+		TheFont.Printf(FB,0,0,"Counting %d",n++);
+
+		if( (((n-1)%150)&128) != ((n%150)&128) )// Only draw when it changes to stop flicker. Later I'll implement an offscreen buffer.
 		{
-			int r = (rand()%50)+10;
-			int x = (rand()%(FB->GetWidth()-r-r))+r;
-			int y = (rand()%(FB->GetHeight()-r-r))+r;
-			int c = rand()&7;
-
-			FB->DrawCircle(x,y,r,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
+			TheButton.Render(FB,((n%150)&128) != 0);
+			GreenButton.Render(FB,((n%150)&128) != 0);
 		}
+		
 
-		{
-			int FromX = rand()%FB->GetWidth();
-			int FromY = rand()%FB->GetHeight();
-			int ToX = rand()%FB->GetWidth();
-			int ToY = rand()%FB->GetHeight();
-
-			int c = rand()&7;
-			
-			FB->DrawLine(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2]);
-		}
-
-		{
-			int FromX = rand()%FB->GetWidth();
-			int FromY = rand()%FB->GetHeight();
-			int ToX = rand()%FB->GetWidth();
-			int ToY = rand()%FB->GetHeight();
-
-			int c = rand()&7;
-
-			FB->DrawRectangle(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
-		}
-	}
+		nanosleep(&SleepTime,NULL);
+	};
+	
 
 /*
 	const FBIO::Font *small = FBIO::Font::AllocateSmallFont();

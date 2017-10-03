@@ -1,2 +1,2 @@
-
-examples/primitive-test/bin/
+*.obj
+bin/
