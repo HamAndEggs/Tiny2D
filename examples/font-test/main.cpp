@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 
 	FB->ClearScreen(150,150,150);
 
-	FBIO::Font TheFont;
+	FBIO::Font TheFont(3);
 	FBIO::Button TheButton(100,100,150,50,"This is a button");
 	FBIO::Button GreenButton(200,200,150,50,"A green button");
 	GreenButton.SetColour(30,150,30);
@@ -47,29 +47,23 @@ int main(int argc, char *argv[])
 	timespec SleepTime = {0,10000000};
 	while(KeepGoing)
 	{
-		FB->DrawRectangle(0,0,300,13,150,150,150,true);
-		TheFont.Printf(FB,0,0,"Counting %d",n++);
-
-		if( (((n-1)%150)&128) != ((n%150)&128) )// Only draw when it changes to stop flicker. Later I'll implement an offscreen buffer.
+		if( ((n)>>4) != ((n-1)>>4) )
 		{
-			TheButton.Render(FB,((n%150)&128) != 0);
-			GreenButton.Render(FB,((n%150)&128) != 0);
+			FB->DrawRectangle(9*8*5,0,19*8*5,13*5,150,150,150,true);
+			TheFont.SetPixelSize(5);
+			TheFont.Printf(FB,0,0,"Counting %d",n>>4);
+		}
+
+		TheFont.SetPixelSize(1);
+		if( (((n-1)%150)&128) != ((n%150)&128) )// Only draw when it changes to stop flicker. This is a simple frame buffer lib. If you want offscreen buffers and high speed, use SDL.
+		{
+			TheButton.Render(FB,TheFont,((n%150)&128) != 0);
+			GreenButton.Render(FB,TheFont,((n%150)&128) != 0);
 		}
 		
-
+		n++;
 		nanosleep(&SleepTime,NULL);
 	};
-	
-
-/*
-	const FBIO::Font *small = FBIO::Font::AllocateSmallFont();
-	const FBIO::Font *big = FBIO::Font::AllocateBigFont();
-
-	small->Print(FB,100,100,"This is a test");
-	big->Print(FB,100,120,"This is a test");
-
-	delete small;
-	delete big;*/
 
 	delete FB;
 	return 0;

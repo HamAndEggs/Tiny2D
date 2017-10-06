@@ -718,40 +718,82 @@ static const uint8_t font8x13[] =
     0x3a, 0x02, 0x42, 0x3c
 };
 
-Font::Font()
+Font::Font(int pPixelSize):mPixelSize(1)
 {
 	SetPenColour(255,255,255);
+	SetPixelSize(pPixelSize);
 }
 
 Font::~Font()
 {
 }
 
-void Font::DrawChar(FrameBuffer* pDest,int pX,int pY,int pChar)const
+void Font::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const
 {
 	const uint8_t* d = font8x13 + pChar * 13;
-	for(int y = 0 ; y < 13 ; y++ , d++)
+	if( mPixelSize == 1 )
 	{
-		int x = pX;
-		const uint8_t bits = *d;
-		for( int bit = 7 ; bit > -1 ; bit-- , x++ )
+		for(int y = 0 ; y < 13 ; y++ , d++)
 		{
-			if( bits&(1<<bit) )
+			int x = pX;
+			const uint8_t bits = *d;
+			if( bits != 0 )
 			{
-				pDest->WritePixel(x,pY + y,mPenColour.r,mPenColour.g,mPenColour.b);
+				for( int bit = 7 ; bit > -1 ; bit-- , x++ )
+				{
+					if( bits&(1<<bit) )
+					{
+						pDest->WritePixel(x,pY + y,pGreen,pGreen,pBlue);
+					}
+				}
 			}
 		}
 	}
+	else
+	{
+		for(int y = 0 ; y < 13 ; y++ , d++ , pY += mPixelSize )
+		{
+			int x = pX;
+			const uint8_t bits = *d;
+			if( bits != 0 )
+			{
+				for( int bit = 7 ; bit > -1 ; bit-- , x+=mPixelSize )
+				{
+					if( bits&(1<<bit) )
+					{
+						for(int i = 0 ; i < mPixelSize ; i++ )
+							pDest->DrawLineH(x,pY+i,x+mPixelSize,pGreen,pGreen,pBlue);
+					}
+				}
+			}
+		}
+	}
+
+}
+
+void Font::Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const
+{
+	while(*pText)
+	{
+		DrawChar(pDest,pX,pY,pGreen,pGreen,pBlue,*pText);
+		pX += 8*mPixelSize;
+		pText++;
+	};
+}
+
+void Font::Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const
+{
+	char buf[1024];	
+	va_list args;
+	va_start(args, pFmt);
+	vsnprintf(buf, sizeof(buf), pFmt, args);
+	va_end(args);
+	Print(pDest, pX,pY,pGreen,pGreen,pBlue, buf);
 }
 
 void Font::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const
 {
-	while(*pText)
-	{
-		DrawChar(pDest,pX,pY,*pText);
-		pX += 8;
-		pText++;
-	};
+	Print(pDest,pX,pY,mPenColour.r,mPenColour.g,mPenColour.b,pText);
 }
 
 void Font::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const
@@ -761,7 +803,7 @@ void Font::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const
 	va_start(args, pFmt);
 	vsnprintf(buf, sizeof(buf), pFmt, args);
 	va_end(args);
-	Print(pDest, pX,pY, buf);
+	Print(pDest, pX,pY,mPenColour.r,mPenColour.g,mPenColour.b, buf);
 }
 
 void Font::SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
@@ -769,6 +811,13 @@ void Font::SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 	mPenColour.r = pRed;
 	mPenColour.g = pGreen;
 	mPenColour.b = pBlue;
+}
+
+void Font::SetPixelSize(int pPixelSize)
+{
+	assert( pPixelSize > 0 );
+	if( pPixelSize > 0 )
+		mPixelSize = pPixelSize;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -791,7 +840,7 @@ Button::~Button()
 	delete []mText;
 }
 
-void Button::Render(FrameBuffer* pDest,bool pPressed)
+void Button::Render(FrameBuffer* pDest,const Font& pFont,bool pPressed)
 {
 	pDest->DrawRectangle(mRect.FromX,mRect.FromY,mRect.ToX,mRect.ToY,mFillColour.r,mFillColour.g,mFillColour.b,true);
 
@@ -823,11 +872,9 @@ void Button::Render(FrameBuffer* pDest,bool pPressed)
 		y -= 13/2;
 
 		if( pPressed )
-			mTheFont.SetPenColour(mTextPressedColour.r,mTextPressedColour.g,mTextPressedColour.b);
+			pFont.Print(pDest,x,y,mTextPressedColour.r,mTextPressedColour.g,mTextPressedColour.b,mText);
 		else
-			mTheFont.SetPenColour(mTextColour.r,mTextColour.g,mTextColour.b);
-
-		mTheFont.Print(pDest,x,y,mText);
+			pFont.Print(pDest,x,y,mTextColour.r,mTextColour.g,mTextColour.b,mText);
 	}
 }
 

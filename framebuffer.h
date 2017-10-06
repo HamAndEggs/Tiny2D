@@ -22,8 +22,6 @@
 
 namespace FBIO{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-class Font;
-   
 class FrameBuffer
 {
 public:
@@ -110,18 +108,27 @@ private:
 class Font
 {
 public:
-	Font();
+	Font(int pPixelSize = 1);
 	~Font();
 
-	int GetCharWidth()const{return 8;}
-	int GetCharHeight()const{return 13;}
+	int GetCharWidth()const{return 8*mPixelSize;}
+	int GetCharHeight()const{return 13*mPixelSize;}
 
-	void DrawChar(FrameBuffer* pDest,int pX,int pY,int pChar)const;
+	// These render the passed in colour, does not change the pen colour.
+	void DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const;
+	void Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
+	void Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
+
+	// These use current pen. Just a way to reduce the number of args you need to use for a propertiy that does not change that much.
 	void Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const;
 	void Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const;
 	
 	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+	void SetPixelSize(int pPixelSize);
 private:
+
+	int mPixelSize;
+
 	struct
 	{
 		uint8_t r,g,b;
@@ -135,7 +142,7 @@ public:
 	Button(int pX,int pY,int pWidth,int pHeight,const char* pText);// Colours default to windows 3.1 type colours.
 	~Button();
 
-	void Render(FrameBuffer* pDest,bool pPressed);
+	void Render(FrameBuffer* pDest,const Font& pFont,bool pPressed);
 
 	void SetText(const char* pText);
 	void SetTextf(const char* pFmt,...);
@@ -159,7 +166,6 @@ private:
 	}mLightColour,mFillColour,mDarkColour,mTextColour,mTextPressedColour;
 
 	const char* mText;
-	Font mTheFont;
 };
    
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
