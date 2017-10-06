@@ -4,6 +4,8 @@
 #include <time.h>
 #include <signal.h>
 #include <unistd.h>
+#include <cstdarg>
+#include <string.h>
 
 #include "framebuffer.h"
 
@@ -21,6 +23,145 @@ void static CtrlHandler(int SigNum)
 	KeepGoing = false;
 }
 
+// Very simple button rendering class example. No logic.
+class Button
+{
+public:
+	Button(int pX,int pY,int pWidth,int pHeight,const char* pText):mText(NULL)
+	{
+		mRect.FromX = pX;
+		mRect.FromY = pY;
+		mRect.ToX = pX + pWidth;
+		mRect.ToY = pY + pHeight;
+		SetText(pText);
+		SetColour(150,150,150);
+		SetTextColour(0,0,0);
+		SetTextPressedColour(200,200,200);
+	}
+
+	~Button()
+	{
+		delete []mText;
+	}
+
+	void Render(FBIO::FrameBuffer* pDest,const FBIO::Font& pFont,bool pPressed)
+	{
+		pDest->DrawRectangle(mRect.FromX,mRect.FromY,mRect.ToX,mRect.ToY,mFillColour.r,mFillColour.g,mFillColour.b,true);
+	
+		if( pPressed )
+		{
+			pDest->DrawLineH(mRect.FromX,mRect.FromY,mRect.ToX,mDarkColour.r,mDarkColour.g,mDarkColour.b);
+			pDest->DrawLineV(mRect.FromX,mRect.FromY,mRect.ToY,mDarkColour.r,mDarkColour.g,mDarkColour.b);
+	
+			pDest->DrawLineH(mRect.FromX,mRect.ToY,mRect.ToX,mLightColour.r,mLightColour.g,mLightColour.b);
+			pDest->DrawLineV(mRect.ToX,mRect.FromY,mRect.ToY,mLightColour.r,mLightColour.g,mLightColour.b);
+		}
+		else
+		{
+			pDest->DrawLineH(mRect.FromX,mRect.FromY,mRect.ToX,mLightColour.r,mLightColour.g,mLightColour.b);
+			pDest->DrawLineV(mRect.FromX,mRect.FromY,mRect.ToY,mLightColour.r,mLightColour.g,mLightColour.b);
+	
+			pDest->DrawLineH(mRect.FromX,mRect.ToY,mRect.ToX,mDarkColour.r,mDarkColour.g,mDarkColour.b);
+			pDest->DrawLineV(mRect.ToX,mRect.FromY,mRect.ToY,mDarkColour.r,mDarkColour.g,mDarkColour.b);
+		}
+	
+		if(mText)
+		{
+			// Need to add font hot spot thing to font, IE center at x,y rendering. But for now do here in the button code.
+			int x = (mRect.FromX + mRect.ToX) / 2;
+			int y = (mRect.FromY + mRect.ToY) / 2;
+			
+			int len = strlen(mText);
+			x -= (len*8)/2;
+			y -= 13/2;
+	
+			if( pPressed )
+				pFont.Print(pDest,x,y,mTextPressedColour.r,mTextPressedColour.g,mTextPressedColour.b,mText);
+			else
+				pFont.Print(pDest,x,y,mTextColour.r,mTextColour.g,mTextColour.b,mText);
+		}
+	}
+	
+	void SetText(const char* pText)
+	{
+		delete []mText;
+		mText = NULL;
+		if( pText )
+		{
+			int len = strlen(pText) + 1;
+			char *newText = new char[len];
+			strcpy(newText,pText);
+			mText = newText;
+		}
+	}
+	
+	void SetTextf(const char* pFmt,...)
+	{
+		char buf[1024];	
+		va_list args;
+		va_start(args, pFmt);
+		vsnprintf(buf, sizeof(buf), pFmt, args);
+		va_end(args);
+		SetText(buf);
+	}
+
+	void SetColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)	// Makes mLightColour a bright version of the colour, mDarkColour a darkened version and sets the mFillColour to the colour passed in. Does not change text colour.	
+	{
+		SetLightColour((uint8_t)std::min(255,((int)pRed<<1)),(uint8_t)std::min(255,((int)pGreen<<1)),(uint8_t)std::min(255,((int)pBlue<<1)));
+		SetFillColour(pRed,pGreen,pBlue);
+		SetDarkColour(pRed>>1,pGreen>>1,pBlue>>1);
+	}
+
+	void SetLightColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+	{
+		mLightColour.r = pRed;
+		mLightColour.g = pGreen;
+		mLightColour.b = pBlue;
+	}
+	
+	void SetFillColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+	{
+		mFillColour.r = pRed;
+		mFillColour.g = pGreen;
+		mFillColour.b = pBlue;
+	}
+	
+	void SetDarkColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+	{
+		mDarkColour.r = pRed;
+		mDarkColour.g = pGreen;
+		mDarkColour.b = pBlue;
+	}
+	
+	void SetTextColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+	{
+		mTextColour.r = pRed;
+		mTextColour.g = pGreen;
+		mTextColour.b = pBlue;
+	}
+	
+	void SetTextPressedColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+	{
+		mTextPressedColour.r = pRed;
+		mTextPressedColour.g = pGreen;
+		mTextPressedColour.b = pBlue;
+	}
+		
+private:
+	
+	struct
+	{
+		int FromX,FromY,ToX,ToY;
+	}mRect;
+
+	struct
+	{
+		uint8_t r,g,b;
+	}mLightColour,mFillColour,mDarkColour,mTextColour,mTextPressedColour;
+
+	const char* mText;
+};
+
 int main(int argc, char *argv[])
 {	
 	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
@@ -37,8 +178,8 @@ int main(int argc, char *argv[])
 	FB->ClearScreen(150,150,150);
 
 	FBIO::Font TheFont(3);
-	FBIO::Button TheButton(100,100,150,50,"This is a button");
-	FBIO::Button GreenButton(200,200,150,50,"A green button");
+	Button TheButton(100,100,150,50,"This is a button");
+	Button GreenButton(200,200,150,50,"A green button");
 	GreenButton.SetColour(30,150,30);
 
 	TheFont.SetPenColour(0,0,0);

@@ -119,7 +119,7 @@ public:
 	void Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
 	void Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
 
-	// These use current pen. Just a way to reduce the number of args you need to use for a propertiy that does not change that much.
+	// These use current pen. Just a way to reduce the number of args you need to use for a property that does not change that much.
 	void Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const;
 	void Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const;
 	
@@ -133,39 +133,6 @@ private:
 	{
 		uint8_t r,g,b;
 	}mPenColour;
-};
-
-// Very simple button rendering class. No logic.
-class Button
-{
-public:
-	Button(int pX,int pY,int pWidth,int pHeight,const char* pText);// Colours default to windows 3.1 type colours.
-	~Button();
-
-	void Render(FrameBuffer* pDest,const Font& pFont,bool pPressed);
-
-	void SetText(const char* pText);
-	void SetTextf(const char* pFmt,...);
-	void SetColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);	// Makes mLightColour a bright version of the colour, mDarkColour a darkened version and sets the mFillColour to the colour passed in. Does not change text colour.
-	void SetLightColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-	void SetFillColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-	void SetDarkColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-	void SetTextColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-	void SetTextPressedColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-	
-private:
-	
-	struct
-	{
-		int FromX,FromY,ToX,ToY;
-	}mRect;
-
-	struct
-	{
-		uint8_t r,g,b;
-	}mLightColour,mFillColour,mDarkColour,mTextColour,mTextPressedColour;
-
-	const char* mText;
 };
    
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
