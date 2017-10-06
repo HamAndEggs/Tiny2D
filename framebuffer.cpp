@@ -190,10 +190,12 @@ void FrameBuffer::ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 
 void FrameBuffer::BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight)
 {
-	for( int y = pY ; y < mHeight && y < pSourceHeight ; y++, pSourcePixels += pSourceWidth * 3 )
+	int EndX = pSourceWidth + pX; 
+	int EndY = pSourceHeight + pY;
+	for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 3 )
 	{
 		const uint8_t* scanline = pSourcePixels;
-		for( int x = pX ; x < mWidth && x < pSourceWidth ; x++, scanline += 3 )
+		for( int x = pX ; x < mWidth && x < EndX ; x++, scanline += 3 )
 		{
 			WritePixel(x,y,scanline[0],scanline[1],scanline[2]);
 		}

@@ -1,0 +1,33 @@
+
+{
+	"configurations":
+	{
+		"release":
+		{
+			"target":"executable",
+			"compiler":"gcc",
+			"linker":"gcc",
+			"archiver":"ar",
+			"output_path":"./bin/",
+			"output_name":"load-jpg",
+			"standard":"c++11",
+			"optimisation":"3",
+			"include":
+			[
+				"/usr/include/",
+				"../../"
+			],
+			"libs":
+			[
+				"stdc++",
+				"pthread",
+				"jpeg"
+			]
+		}
+	},
+	"source_files":
+	[
+		"./main.cpp",
+		"../../framebuffer.cpp"
+	]
+}
