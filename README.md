@@ -15,15 +15,15 @@ As it's only one header and source file I did not bother creating make / build f
 FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
 if( FB )
 {
-FBIO::Font TheFont(3);
+	FBIO::Font TheFont(3);
 
-FB->ClearScreen(0,0,0);
+	FB->ClearScreen(0,0,0);
 
-FB->DrawCircle(100,100,40,255,0,255,true);
+	FB->DrawCircle(100,100,40,255,0,255,true);
 
-TheFont.Print(FB,10,10,"Hello world");
+	TheFont.Print(FB,10,10,"Hello world");
 
-delete FB;
+	delete FB;
 }
 ```
 
