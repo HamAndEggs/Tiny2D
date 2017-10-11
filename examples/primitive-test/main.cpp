@@ -68,15 +68,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-/*
-	const FBIO::Font *small = FBIO::Font::AllocateSmallFont();
-	const FBIO::Font *big = FBIO::Font::AllocateBigFont();
-
-	small->Print(FB,100,100,"This is a test");
-	big->Print(FB,100,120,"This is a test");
-
-	delete small;
-	delete big;*/
+	// Stop monitor burn in...
+	FB->ClearScreen(0,0,0);	
 
 	delete FB;
 	return 0;

@@ -151,7 +151,10 @@ int main(int argc, char *argv[])
 			}
 		}
 	};
-	
+
+	// Stop monitor burn in...
+	FB->ClearScreen(0,0,0);
+
 	delete FB;
 	return 0;
 }
