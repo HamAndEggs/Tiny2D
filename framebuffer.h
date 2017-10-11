@@ -25,11 +25,24 @@ namespace FBIO{	// Using a namespace to try to prevent name clashes as my class 
 class FrameBuffer
 {
 public:
+	/*
+		Creates and opens a FrameBuffer object.
+		If the OS does not support the frame buffer driver or there is some other error,
+		this function will return NULL.
+		Set pVerbose to true to get debugging information as the object is created.
+	*/
 	static FrameBuffer* Open(bool pVerbose = false);
 
 	~FrameBuffer();
 
+	/*
+		Returns the width of the frame buffer.
+	*/
 	int GetWidth()const{return mWidth;}
+
+	/*
+		Returns the height of the frame buffer.
+	*/
 	int GetHeight()const{return mHeight;}
 
 	/*
