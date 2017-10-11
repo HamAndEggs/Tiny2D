@@ -3,11 +3,29 @@ Simple light weight direct frame buffer rendering with a built in font. Just one
 
 I wrote this as I wanted a simple and easy way to render stuff on the Raspberr Pi without trying to get SDL2 to work in the console. This is just a plug'n'play source file to add gfx to your console app. Ideal for building GUI's using the small displays you can buy for the Raspberry PI.
 
-# Usage
+## Usage
 Call the static member function Open to create the FrameBuffer object, will return NULL if it did not work. When finished delete the object you created. As simple as that.
 
-# Adding to your project
+## Adding to your project
 As it's only one header and source file I did not bother creating make / build files. Just copy the files into your project and go. Don't get much more simple than that, which is the aim of the project. When you just want something on screen.
+
+## Basic example
+```c++
+#include "framebuffer.h"
+FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+if( FB )
+{
+FBIO::Font TheFont(3);
+
+FB->ClearScreen(0,0,0);
+
+FB->DrawCircle(100,100,40,255,0,255,true);
+
+TheFont.Print(FB,10,10,"Hello world");
+
+delete FB;
+}
+```
 
 ## API.
 ```c++
@@ -92,18 +110,3 @@ void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t 
 */
 void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)const;
 ```
-# Basic example
-  #include "framebuffer.h"
-  FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
-  if( FB )
-  {
-    FBIO::Font TheFont(3);
-    
-    FB->ClearScreen(0,0,0);
-    
-    FB->DrawCircle(100,100,40,255,0,255,true);
-    
-    TheFont.Print(FB,10,10,"Hello world");
-    
-    delete FB;
-  }
