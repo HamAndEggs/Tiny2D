@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
 	// Build colours.
 	for( int i = 0 ; i < 256 ; i++ )
 	{
-		
+		/*
 		float fRed = sin((float)(i*1) / 83.0f);
 		float fGrn = sin((float)(i*2) / 83.0f);
 		float fBlu = sin((float)(i*4) / 83.0f);
@@ -145,7 +145,8 @@ int main(int argc, char *argv[])
 		
 		RED[i] = (uint8_t)(fRed * 255.0f);
 		GREEN[i] = (uint8_t)(fGrn * 255.0f);
-		BLUE[i] = (uint8_t)(fBlu * 255.0f);
+		BLUE[i] = (uint8_t)(fBlu * 255.0f);*/
+		FB->HSV2RGB( (float)i * (360.0f / 255.0f) ,1.0f,1.0f - (float)i / 600.0f,RED[i],GREEN[i],BLUE[i]);		
 	}
 
 	float zoom,zoomstep;

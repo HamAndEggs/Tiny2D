@@ -84,7 +84,17 @@ public:
 		Draws a rectangle with the passed in RGB values either filled or not.
 	*/
 	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false);
-	
+
+
+	/*
+		Converts from HSV to RGB.
+		Very handy for creating colour palettes.
+		See:- (thanks David H)
+			https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+
+	*/
+	void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)const;
+
 private:
 	FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
 

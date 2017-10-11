@@ -219,6 +219,15 @@ void FrameBuffer::BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pWidt
 
 void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 {
+	if( pFromY < 0 || pFromY >= mHeight )
+		return;
+
+	pFromX = std::max(0,std::min(mWidth,pFromX));
+	pToX = std::max(0,std::min(mWidth,pToX));
+
+	if( pFromX == pToX )
+		return;
+	
 	if( pFromX > pToX )
 		std::swap(pFromX,pToX);
 
@@ -254,6 +263,15 @@ void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t 
 
 void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 {
+	if( pFromX < 0 || pFromX >= mWidth )
+		return;
+
+	pFromY = std::max(0,std::min(mHeight,pFromY));
+	pToY = std::max(0,std::min(mHeight,pToY));
+
+	if( pFromY == pToY )
+		return;
+
 	if( pFromY > pToY )
 		std::swap(pFromY,pToY);
 
@@ -432,7 +450,78 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 		DrawLineV(pFromX,pFromY,pToY,pRed,pGreen,pBlue);
 		DrawLineV(pToX,pToY,pToY,pRed,pGreen,pBlue);
 	}
+}
 
+void FrameBuffer::HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)const
+{
+	float R;
+	float G;
+	float B;
+	if(S <= 0.0f)
+	{
+		R = V;
+		G = V;
+		B = V;
+	}
+	else
+	{
+		float hh, p, q, t, ff;
+		long i;
+
+		hh = H;
+		if(hh >= 360.0) hh = 0.0;
+		hh /= 60.0;
+		i = (long)hh;
+		ff = hh - i;
+		p = V * (1.0 - S);
+		q = V * (1.0 - (S * ff));
+		t = V * (1.0 - (S * (1.0 - ff)));
+
+		switch(i)
+		{
+		case 0:
+			R = V;
+			G = t;
+			B = p;
+			break;
+		
+		case 1:
+			R = q;
+			G = V;
+			B = p;
+			break;
+		
+		case 2:
+			R = p;
+			G = V;
+			B = t;
+			break;
+
+		
+		case 3:
+			R = p;
+			G = q;
+			B = V;
+			break;
+		
+		case 4:
+			R = t;
+			G = p;
+			B = V;
+			break;
+
+		case 5:
+		default:
+			R = V;
+			G = p;
+			B = q;
+			break;
+		}
+	}
+
+	rRed = (uint8_t)(R * 255.0f);
+	rGreen = (uint8_t)(G * 255.0f);
+	rBlue = (uint8_t)(B * 255.0f);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
