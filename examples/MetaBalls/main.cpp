@@ -80,7 +80,7 @@ public:
 		{
 			const float diffX = (pX - x);
 			const float diffY = (pY - y);
-			return radius / ((diffX * diffX) + (diffY * diffY));
+			return radius / (((diffX * diffX) + (diffY * diffY)));
 		}
 
 		return radius;
@@ -98,6 +98,31 @@ private:
 	const float radius;
 };
 
+static const int PixelSize = 4;
+static uint8_t RED[256];
+static uint8_t GREEN[256];
+static uint8_t BLUE[256];
+
+void RenderScanLine(FBIO::FrameBuffer* FB,int pFromY,int pToY,const std::vector<Ball>& pBalls)
+{
+	const int Width = FB->GetWidth();
+
+	for( int y = pFromY ; y < pToY ; y+=PixelSize )
+	{
+		for( int x = 0 ; x < Width ; x+=PixelSize )
+		{
+			float TotalDist = 0; 
+			for( auto &ball : pBalls )
+				TotalDist += ball.GetMeta(x,y);
+
+			uint8_t c = (uint8_t)(std::min(255,(int)(TotalDist*3000)));
+			FB->DrawRectangle(x,y,x+PixelSize,y+PixelSize,RED[c],GREEN[c],BLUE[c],true);
+		}
+	}
+}
+
+//void RenderFrame(
+
 int main(int argc, char *argv[])
 {	
 	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
@@ -110,10 +135,6 @@ int main(int argc, char *argv[])
 
 	FB->ClearScreen(0,0,0);
 
-
-	uint8_t RED[256];
-	uint8_t GREEN[256];
-	uint8_t BLUE[256];
 	// Build colours.
 	for( int i = 0 ; i < 256 ; i++ )
 	{
@@ -127,29 +148,34 @@ int main(int argc, char *argv[])
 	std::vector<Ball> TheBalls;
 
 	for(int n = 0 ; n < 15 ; n++ )
-		TheBalls.emplace_back(Width,Height,200);
+		TheBalls.emplace_back(Width,Height,160 + (rand()&127));
 
-	const int PixelSize = 8;
+	const int HeightSplit = Height/4;
 
 	while( KeepGoing )
 	{
 		for( auto &ball : TheBalls )
 			ball.Update(Width,Height);
 		
-		for( int y = 0 ; y < Height ; y+=PixelSize )
-		{
-			for( int x = 0 ; x < Width ; x+=PixelSize )
-			{
-				float TotalDist = 0; 
-				for( auto &ball : TheBalls )
-					TotalDist += ball.GetMeta(x,y);
+//		for( int y = 0 ; y < Height ; y+=PixelSize )
+		int y = 0;
 
-				uint8_t c = (uint8_t)(std::min(255,(int)(TotalDist*3000)));
+		std::thread thread1 = std::thread(RenderScanLine,FB,y,y+HeightSplit,TheBalls);
+		y += HeightSplit;
 
-				for(int n = 0 ; n < PixelSize ; n++ )
-					FB->DrawLineH(x,y+n,x+PixelSize,RED[c],GREEN[c],BLUE[c]);
-			}
-		}
+		std::thread thread2 = std::thread(RenderScanLine,FB,y,y+HeightSplit,TheBalls);
+		y += HeightSplit;
+
+		std::thread thread3 = std::thread(RenderScanLine,FB,y,y+HeightSplit,TheBalls);
+		y += HeightSplit;
+
+		std::thread thread4 = std::thread(RenderScanLine,FB,y,y+HeightSplit,TheBalls);
+
+		// Wait till all done.
+		thread1.join();
+		thread2.join();
+		thread3.join();
+		thread4.join();
 	};
 
 	// Stop monitor burn in...

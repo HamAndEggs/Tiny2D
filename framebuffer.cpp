@@ -301,10 +301,10 @@ void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t 
 		const uint16_t green = pGreen >> 2;
 		const uint16_t blue = pBlue >> 3;
 		const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
-		const int mStride16Bit = mStride>>1;
 
-		uint16_t *dest = (uint16_t*)(mFrameBuffer + (pFromX*2) + (pFromY*mStride16Bit) );
-		for( int y = pFromY ; y < pToY && y < mHeight ; y++, dest += mStride16Bit )
+		uint16_t *dest = (uint16_t*)mFrameBuffer;
+		dest += pFromX + (pFromY*mWidth);
+		for( int y = pFromY ; y < pToY && y < mHeight ; y++, dest += mWidth )
 		{
 			*dest = pixel;
 		}
@@ -456,8 +456,62 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 {
 	if( pFilled )
 	{
-		for(; pFromY <= pToY ; pFromY++ )
-			DrawLineH(pFromX,pFromY,pToX,pRed,pGreen,pBlue);
+		pFromY = std::max(0,std::min(mHeight,pFromY));
+		pToY = std::max(0,std::min(mHeight,pToY));
+
+		if( pFromY == pToY )
+			return;
+
+		if( pFromY > pToY )
+			std::swap(pFromY,pToY);
+
+		pFromX = std::max(0,std::min(mWidth,pFromX));
+		pToX = std::max(0,std::min(mWidth,pToX));
+
+		if( pFromX == pToX )
+			return;
+		
+		if( pFromX > pToX )
+			std::swap(pFromX,pToX);
+
+		const int RedShift = mVaribleScreenInfo.red.offset;
+		const int GreenShift = mVaribleScreenInfo.green.offset;
+		const int BlueShift = mVaribleScreenInfo.blue.offset;
+
+		if( mPixelSize == 2 )
+		{
+			const uint16_t red = pRed >> 3;
+			const uint16_t green = pGreen >> 2;
+			const uint16_t blue = pBlue >> 3;
+			const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
+
+			// Don't need to check for y >= mHeight as above we already clamped it.
+			for( int y = pFromY ; y < pToY ; y++ )
+			{
+				uint16_t *dest = (uint16_t*)(mFrameBuffer + (y*mStride) );
+				// Don't need to check for x >= mWidth as above we already clamped it.
+				for( int x = pFromX ; x < pToX ; x++ )
+				{
+					assert( (dest+x) < ((uint16_t*)(mFrameBuffer + mFrameBufferSize)) );
+					dest[x] = pixel;
+				}
+			}
+		}
+		else
+		{
+			assert( mPixelSize == 3 || mPixelSize == 4 );
+			for( int y = pFromY ; y < pToY ; y++ )
+			{
+				uint8_t *dest = mFrameBuffer + (pFromX*mPixelSize) + (y*mStride);
+				for( int x = pFromX ; x < pToX && x < mWidth ; x++, dest += mPixelSize )
+				{
+					dest[ (RedShift/8) ] = pRed;
+					dest[ (GreenShift/8) ] = pGreen;
+					dest[ (BlueShift/8) ] = pBlue;
+				}
+			}
+		}
+
 	}
 	else
 	{
