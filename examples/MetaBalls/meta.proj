@@ -1,33 +1,65 @@
-
 {
-	"configurations":
-	{
-		"release":
-		{
-			"target":"executable",
-			"compiler":"gcc",
-			"linker":"gcc",
-			"archiver":"ar",
-			"output_path":"./bin/",
-			"output_name":"runme",
-			"standard":"c++11",
-			"optimisation":"3",
-			"include":
-			[
-				"/usr/include/",
-				"../../"
-			],
-			"libs":
-			[
-				"stdc++",
-				"pthread",
-				"m"
-			]
-		}
-	},
-	"source_files":
-	[
-		"./main.cpp",
-		"../../framebuffer.cpp"
-	]
+    "configurations": {
+        "debug": {
+            "default": false,
+            "target": "executable",
+            "compiler": "gcc",
+            "linker": "gcc",
+            "archiver": "ar",
+            "output_path": "./bin/",
+            "output_name": "runme",
+            "standard": "c++17",
+            "optimisation": "0",
+            "debug_level": "2",
+            "warnings_as_errors": false,
+            "enable_all_warnings": false,
+            "fatal_errors": false,
+            "include": [
+                "./",
+                "/usr/include/",
+                "./../../"
+            ],
+            "libs": [
+                "stdc++",
+                "pthread",
+                "m"
+            ],
+            "define": [
+                "DEBUG_BUILD"
+            ]
+        },
+        "release": {
+            "default": false,
+            "target": "executable",
+            "compiler": "gcc",
+            "linker": "gcc",
+            "archiver": "ar",
+            "output_path": "./bin/",
+            "output_name": "runme",
+            "standard": "c++11",
+            "optimisation": "3",
+            "debug_level": "2",
+            "warnings_as_errors": false,
+            "enable_all_warnings": false,
+            "fatal_errors": false,
+            "include": [
+                "./",
+                "/usr/include/",
+                "./../../"
+            ],
+            "libs": [
+                "stdc++",
+                "pthread",
+                "m"
+            ],
+            "define": [
+                "NDEBUG",
+                "RELEASE_BUILD"
+            ]
+        }
+    },
+    "source_files": [
+        "../../framebuffer.cpp",
+        "./main.cpp"
+    ]
 }

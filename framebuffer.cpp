@@ -67,6 +67,7 @@ FrameBuffer* FrameBuffer::Open(bool pVerbose)
 				if(pVerbose)
 				{
 					std::cout << "Display size: " << vinfo.xres << "x" << vinfo.yres << ", " << vinfo.bits_per_pixel << "bpp" << std::endl;
+					std::cout << "Frame buffer info: Size " << finfo.smem_len << " line length " << finfo.line_length << std::endl;
 
 					std::cout << "Red bitfield: offset " << vinfo.red.offset << " length " << vinfo.red.length << " msb_right " << vinfo.red.msb_right << std::endl;
 					std::cout << "Green bitfield: offset " << vinfo.green.offset << " length " << vinfo.green.length << " msb_right " << vinfo.green.msb_right << std::endl;
@@ -74,8 +75,11 @@ FrameBuffer* FrameBuffer::Open(bool pVerbose)
 				}
 
 				uint8_t* ScreenRam = (uint8_t*)mmap(0,finfo.smem_len,PROT_READ | PROT_WRITE,MAP_SHARED,File, 0);
-
-				newFrameBuffer = new FrameBuffer(File,ScreenRam,finfo,vinfo,pVerbose);
+				assert(ScreenRam);
+				if( ScreenRam != NULL )
+				{
+					newFrameBuffer = new FrameBuffer(File,ScreenRam,finfo,vinfo,pVerbose);
+				}
 
 			}
 		}
@@ -125,7 +129,6 @@ void FrameBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t p
 		const int RedShift = mVaribleScreenInfo.red.offset;
 		const int GreenShift = mVaribleScreenInfo.green.offset;
 		const int BlueShift = mVaribleScreenInfo.blue.offset;
-		const int index = (pX*mPixelSize) + (pY*mStride);
 		
 		if( mPixelSize == 2 )
 		{
@@ -135,11 +138,21 @@ void FrameBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t p
 
 			const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
 
+			assert( (pY*mStride) + pX < mFrameBufferSize );
+
 			((uint16_t*)(mFrameBuffer + (pY*mStride)))[pX] = pixel;
 		}
 		else
 		{
+			const int index = (pX*mPixelSize) + (pY*mStride);
+
+			assert( index >= 0 );
+			assert( index + (RedShift/8) < mFrameBufferSize );
+			assert( index + (GreenShift/8) < mFrameBufferSize );
+			assert( index + (BlueShift/8) < mFrameBufferSize );
+
 			assert( mPixelSize == 3 || mPixelSize == 4 );
+
 			mFrameBuffer[ index + (RedShift/8) ] = pRed;
 			mFrameBuffer[ index + (GreenShift/8) ] = pGreen;
 			mFrameBuffer[ index + (BlueShift/8) ] = pBlue;
@@ -160,12 +173,14 @@ void FrameBuffer::ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 		const uint16_t blue = pBlue >> 3;
 		const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
 
-		uint16_t *line = (uint16_t*)mFrameBuffer;
+		uint8_t *line = mFrameBuffer;// line pointer is byte as mStride is in number of bytes too, line pointer is incremented by that.
 		for( int y = 0 ; y < mHeight ; y++, line += mStride )
 		{
-			uint16_t *dest = line;
+			// Now go to 16bit mode for each pixel write.
+			uint16_t *dest = (uint16_t*)line;
 			for( int x = 0 ; x < mWidth ; x++ )
 			{
+				assert( (dest+x) < ((uint16_t*)(mFrameBuffer + mFrameBufferSize)) );
 				dest[x] = pixel;
 			}
 		}
@@ -242,9 +257,10 @@ void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t 
 		const uint16_t blue = pBlue >> 3;
 		const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
 
-		uint16_t *dest = (uint16_t*)(mFrameBuffer + (pFromX*2) + (pFromY*mStride) );
+		uint16_t *dest = (uint16_t*)(mFrameBuffer + (pFromY*mStride) );
 		for( int x = pFromX ; x < pToX && x < mWidth ; x++ )
 		{
+			assert( (dest+x) < ((uint16_t*)(mFrameBuffer + mFrameBufferSize)) );
 			dest[x] = pixel;
 		}
 	}
@@ -285,9 +301,10 @@ void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t 
 		const uint16_t green = pGreen >> 2;
 		const uint16_t blue = pBlue >> 3;
 		const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
+		const int mStride16Bit = mStride>>1;
 
-		uint16_t *dest = (uint16_t*)(mFrameBuffer + (pFromX*2) + (pFromY*mStride) );
-		for( int y = pFromY ; y < pToY && y < mHeight ; y++, dest += mStride )
+		uint16_t *dest = (uint16_t*)(mFrameBuffer + (pFromX*2) + (pFromY*mStride16Bit) );
+		for( int y = pFromY ; y < pToY && y < mHeight ; y++, dest += mStride16Bit )
 		{
 			*dest = pixel;
 		}

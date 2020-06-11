@@ -10,7 +10,7 @@
 			"archiver":"ar",
 			"output_path":"./bin/",
 			"output_name":"runme",
-			"standard":"c++11",
+			"standard":"c++17",
 			"optimisation":"3",
 			"include":
 			[
@@ -24,6 +24,29 @@
 				"m"
 			]
 		}
+	},
+	"debug":
+	{
+		"target":"executable",
+		"compiler":"gcc",
+		"linker":"gcc",
+		"archiver":"ar",
+		"output_path":"./bin/",
+		"output_name":"runme",
+		"standard":"c++17",
+		"optimisation": "0",
+        "debug_level": "2",
+		"include":
+		[
+			"/usr/include/",
+			"../../"
+		],
+		"libs":
+		[
+			"stdc++",
+			"pthread",
+			"m"
+		]
 	},
 	"source_files":
 	[
