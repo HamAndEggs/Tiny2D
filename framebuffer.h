@@ -17,9 +17,10 @@
 #ifndef FRAME_BUFFER_H
 #define FRAME_BUFFER_H
 
-#ifndef USE_FREETYPEFONTS
-#define USE_FREETYPEFONTS
-#endif
+// For when using visual studio....
+//#ifndef USE_FREETYPEFONTS
+//#define USE_FREETYPEFONTS
+//#endif
 
 #include <stdint.h>
 #include <linux/fb.h>
