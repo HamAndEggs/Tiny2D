@@ -44,14 +44,18 @@ FrameBuffer* FrameBuffer::Open(bool pVerbose)
 	if(File)
 	{
 		if(pVerbose)
-			std::cout << "The framebuffer device was opened successfully." << std::endl;
+		{
+			std::cout << "The framebuffer device was opened successfully.\n";
+		}
 
 		// Get fixed screen information
 		struct fb_fix_screeninfo finfo;
 		if( ioctl(File, FBIOGET_FSCREENINFO, &finfo) )
 		{
 			if(pVerbose)
-				std::cout << "Error reading fixed information.\n" << std::endl;
+			{
+				std::cerr << "Error reading fixed information.\n";
+			}
 		}
 		else
 		{
@@ -60,18 +64,20 @@ FrameBuffer* FrameBuffer::Open(bool pVerbose)
 			if( ioctl(File, FBIOGET_VSCREENINFO, &vinfo) )
 			{
 				if(pVerbose)
-					std::cout << "Error reading variable information." << std::endl;
+				{
+					std::cerr << "Error reading variable information.\n";
+				}
 			}
 			else
 			{
 				if(pVerbose)
 				{
-					std::cout << "Display size: " << vinfo.xres << "x" << vinfo.yres << ", " << vinfo.bits_per_pixel << "bpp" << std::endl;
-					std::cout << "Frame buffer info: Size " << finfo.smem_len << " line length " << finfo.line_length << std::endl;
+					std::cout << "Display size: " << vinfo.xres << "x" << vinfo.yres << ", " << vinfo.bits_per_pixel << "bpp\n";
+					std::cout << "Frame buffer info: Size " << finfo.smem_len << " line length " << finfo.line_length << '\n';
 
-					std::cout << "Red bitfield: offset " << vinfo.red.offset << " length " << vinfo.red.length << " msb_right " << vinfo.red.msb_right << std::endl;
-					std::cout << "Green bitfield: offset " << vinfo.green.offset << " length " << vinfo.green.length << " msb_right " << vinfo.green.msb_right << std::endl;
-					std::cout << "Blue bitfield: offset " << vinfo.blue.offset << " length " << vinfo.blue.length << " msb_right " << vinfo.blue.msb_right << std::endl;
+					std::cout << "Red bitfield: offset " << vinfo.red.offset << " length " << vinfo.red.length << " msb_right " << vinfo.red.msb_right << '\n';
+					std::cout << "Green bitfield: offset " << vinfo.green.offset << " length " << vinfo.green.length << " msb_right " << vinfo.green.msb_right << '\n';
+					std::cout << "Blue bitfield: offset " << vinfo.blue.offset << " length " << vinfo.blue.length << " msb_right " << vinfo.blue.msb_right << '\n';
 				}
 
 				uint8_t* ScreenRam = (uint8_t*)mmap(0,finfo.smem_len,PROT_READ | PROT_WRITE,MAP_SHARED,File, 0);
@@ -89,7 +95,9 @@ FrameBuffer* FrameBuffer::Open(bool pVerbose)
 	{
 		close(File);
 		if(pVerbose)
-			std::cout << "Error: cannot open framebuffer device." << std::endl;
+		{
+			std::cerr << "Error: cannot open framebuffer device.\n";
+		}
 	}
 
 	return newFrameBuffer;
@@ -103,15 +111,36 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninf
 	mFrameBufferFile(pFile),
 	mFrameBufferSize(pFixInfo.smem_len),
 	mVerbose(pVerbose),
-	mVaribleScreenInfo(pScreenInfo),
+	mVariableScreenInfo(pScreenInfo),
 	mFrameBuffer(pFrameBuffer)
 {
+#ifdef USE_FREETYPEFONTS
+	if( FT_Init_FreeType(&mFreetype) != 0 )
+	{
+		if(mVerbose)
+		{
+			std::cout << "Freetype font library created\n";
+		}	
+	}
+#endif //USE_FREETYPEFONTS
 }
 
 FrameBuffer::~FrameBuffer()
 {
+#ifdef USE_FREETYPEFONTS
+	if( FT_Done_FreeType(mFreetype) != 0 )
+	{
+		if(mVerbose)
+		{
+			std::cout << "Freetype font library created\n";
+		}	
+	}
+#endif //USE_FREETYPEFONTS
+
 	if(mVerbose)
-		std::cout << "Free'ing frame buffer resources, frame buffer object will be invalid and not unusable." << std::endl;
+	{
+		std::cout << "Freeing frame buffer resources, frame buffer object will be invalid and not unusable.\n";
+	}
 
 	munmap((void*)mFrameBuffer,mFrameBufferSize);
 	close(mFrameBufferFile);
@@ -126,9 +155,9 @@ void FrameBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t p
 		// When optised by compiler these const vars will
 		// all move to generate the same code as if I made it all one line and unreadable!
 		// Trust your optimiser. :)
-		const int RedShift = mVaribleScreenInfo.red.offset;
-		const int GreenShift = mVaribleScreenInfo.green.offset;
-		const int BlueShift = mVaribleScreenInfo.blue.offset;
+		const int RedShift = mVariableScreenInfo.red.offset;
+		const int GreenShift = mVariableScreenInfo.green.offset;
+		const int BlueShift = mVariableScreenInfo.blue.offset;
 		
 		if( mPixelSize == 2 )
 		{
@@ -162,9 +191,9 @@ void FrameBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t p
 
 void FrameBuffer::ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 {
-	const int RedShift = mVaribleScreenInfo.red.offset;
-	const int GreenShift = mVaribleScreenInfo.green.offset;
-	const int BlueShift = mVaribleScreenInfo.blue.offset;
+	const int RedShift = mVariableScreenInfo.red.offset;
+	const int GreenShift = mVariableScreenInfo.green.offset;
+	const int BlueShift = mVariableScreenInfo.blue.offset;
 
 	if( mPixelSize == 2 )
 	{
@@ -246,9 +275,9 @@ void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t 
 	if( pFromX > pToX )
 		std::swap(pFromX,pToX);
 
-	const int RedShift = mVaribleScreenInfo.red.offset;
-	const int GreenShift = mVaribleScreenInfo.green.offset;
-	const int BlueShift = mVaribleScreenInfo.blue.offset;
+	const int RedShift = mVariableScreenInfo.red.offset;
+	const int GreenShift = mVariableScreenInfo.green.offset;
+	const int BlueShift = mVariableScreenInfo.blue.offset;
 
 	if( mPixelSize == 2 )
 	{
@@ -291,9 +320,9 @@ void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t 
 	if( pFromY > pToY )
 		std::swap(pFromY,pToY);
 
-	const int RedShift = mVaribleScreenInfo.red.offset;
-	const int GreenShift = mVaribleScreenInfo.green.offset;
-	const int BlueShift = mVaribleScreenInfo.blue.offset;
+	const int RedShift = mVariableScreenInfo.red.offset;
+	const int GreenShift = mVariableScreenInfo.green.offset;
+	const int BlueShift = mVariableScreenInfo.blue.offset;
 
 	if( mPixelSize == 2 )
 	{
@@ -474,9 +503,9 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 		if( pFromX > pToX )
 			std::swap(pFromX,pToX);
 
-		const int RedShift = mVaribleScreenInfo.red.offset;
-		const int GreenShift = mVaribleScreenInfo.green.offset;
-		const int BlueShift = mVaribleScreenInfo.blue.offset;
+		const int RedShift = mVariableScreenInfo.red.offset;
+		const int GreenShift = mVariableScreenInfo.green.offset;
+		const int BlueShift = mVariableScreenInfo.blue.offset;
 
 		if( mPixelSize == 2 )
 		{
@@ -880,17 +909,17 @@ static const uint8_t font8x13[] =
     0x3a, 0x02, 0x42, 0x3c
 };
 
-Font::Font(int pPixelSize):mPixelSize(1)
+PixelFont::PixelFont(int pPixelSize):mPixelSize(1)
 {
 	SetPenColour(255,255,255);
 	SetPixelSize(pPixelSize);
 }
 
-Font::~Font()
+PixelFont::~PixelFont()
 {
 }
 
-void Font::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const
+void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const
 {
 	const uint8_t* d = font8x13 + pChar * 13;
 	if( mPixelSize == 1 )
@@ -933,7 +962,7 @@ void Font::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen
 
 }
 
-void Font::Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const
+void PixelFont::Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const
 {
 	while(*pText)
 	{
@@ -943,7 +972,7 @@ void Font::Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,ui
 	};
 }
 
-void Font::Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const
+void PixelFont::Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const
 {
 	char buf[1024];	
 	va_list args;
@@ -953,12 +982,12 @@ void Font::Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,u
 	Print(pDest, pX,pY,pGreen,pGreen,pBlue, buf);
 }
 
-void Font::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const
+void PixelFont::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const
 {
 	Print(pDest,pX,pY,mPenColour.r,mPenColour.g,mPenColour.b,pText);
 }
 
-void Font::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const
+void PixelFont::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const
 {
 	char buf[1024];	
 	va_list args;
@@ -968,19 +997,200 @@ void Font::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const
 	Print(pDest, pX,pY,mPenColour.r,mPenColour.g,mPenColour.b, buf);
 }
 
-void Font::SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+void PixelFont::SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 {
 	mPenColour.r = pRed;
 	mPenColour.g = pGreen;
 	mPenColour.b = pBlue;
 }
 
-void Font::SetPixelSize(int pPixelSize)
+void PixelFont::SetPixelSize(int pPixelSize)
 {
 	assert( pPixelSize > 0 );
 	if( pPixelSize > 0 )
 		mPixelSize = pPixelSize;
 }
+
+#ifdef USE_FREETYPEFONTS
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Font Implementation.
+// The code at https://github.com/kevinboone/fbtextdemo/blob/main/src/main.c
+// was used and copied for reference. Also see http://kevinboone.me/fbtextdemo.html?i=1
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+FreeTypeFont::FreeTypeFont(const FrameBuffer* pFrameBuffer,const char* pFontName,int pPixelHeight):
+	mFace(NULL),
+	mOK(false)
+{
+	if( FT_New_Face(pFrameBuffer->GetFreetypeLibrary(),pFontName,0,&mFace) == 0 )
+	{
+		SetPenColour(255,255,255);
+		if( FT_Set_Pixel_Sizes(mFace,0,pPixelHeight) == 0 )
+		{
+			mOK = true;
+		}
+		else if( pFrameBuffer->GetVerbose() )
+		{
+			std::cerr << "Failed to set pixel size " << pPixelHeight << " for true type font " << pFontName << '\n';
+		}
+	}
+	else if( pFrameBuffer->GetVerbose() )
+	{
+		std::cerr << "Failed to load true type font " << pFontName << '\n';
+	}
+}
+
+FreeTypeFont::~FreeTypeFont()
+{
+	FT_Done_Face(mFace);
+}
+
+int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,char pChar)const
+{
+	if( !mOK )
+		return 0;
+
+	// Note that TT fonts have no built-in padding. 
+	// That is, first,
+	//  the top row of the bitmap is the top row of pixels to 
+	//  draw. These rows usually won't be at the face bounding box. We need to
+	//  work out the overall height of the character cell, and
+	//  offset the drawing vertically by that amount. 
+	//
+	// Similar, there is no left padding. The first pixel in each row will not
+	//  be drawn at the left margin of the bounding box, but in the centre of
+	//  the screen width that will be occupied by the glyph.
+	//
+	//  We need to calculate the x and y offsets of the glyph, but we can't do
+	//  this until we've loaded the glyph, because metrics
+	//  won't be available.
+
+	// Note that, by default, TT metrics are in 64'ths of a pixel, hence
+	//  all the divide-by-64 operations below.
+
+	// Get a FreeType glyph index for the character. If there is no
+	//  glyph in the face for the character, this function returns
+	//  zero.  
+	FT_UInt gi = FT_Get_Char_Index (mFace, pChar);
+	if( gi == 0 )
+	{// Character not found, so default to space.
+		gi = FT_Get_Char_Index (mFace, ' ');
+		if( gi == 0 )
+			return 0;
+	}
+
+	// Loading the glyph makes metrics data available
+	if( FT_Load_Glyph (mFace, gi, FT_LOAD_DEFAULT) != 0 )
+	{
+		return 0;
+	}
+
+	// Now we have the metrics, let's work out the x and y offset
+	//  of the glyph from the specified x and y. Because there is
+	//  no padding, we can't just draw the bitmap so that it's
+	//  TL corner is at (x,y) -- we must insert the "missing" 
+	//  padding by aligning the bitmap in the space available.
+
+	// bbox.yMax is the height of a bounding box that will enclose
+	//  any glyph in the face, starting from the glyph baseline.
+	int bbox_ymax = mFace->bbox.yMax / 64;
+	// horiBearingX is the height of the top of the glyph from
+	//   the baseline. So we work out the y offset -- the distance
+	//   we must push down the glyph from the top of the bounding
+	//   box -- from the height and the Y bearing.
+	int y_off = bbox_ymax - mFace->glyph->metrics.horiBearingY / 64;
+
+	// glyph_width is the pixel width of this specific glyph
+	int glyph_width = mFace->glyph->metrics.width / 64;
+	// Advance is the amount of x spacing, in pixels, allocated
+	//   to this glyph
+	int advance = mFace->glyph->metrics.horiAdvance / 64;
+	// Work out where to draw the left-most row of pixels --
+	//   the x offset -- by halving the space between the 
+	//   glyph width and the advance
+	int x_off = (advance - glyph_width) / 2;
+
+	// So now we have (x_off,y_off), the location at which to
+	//   start drawing the glyph bitmap.
+
+	// Rendering a loaded glyph creates the bitmap
+	if( FT_Render_Glyph(mFace->glyph, FT_RENDER_MODE_NORMAL) != 0 )
+	{
+		return 0;
+	}
+
+	// Write out the glyph row-by-row using framebuffer_set_pixel
+	// Note that the glyph can contain horizontal padding. We need
+	//  to take this into account when working out where the pixels
+	//  are in memory, but we don't actually need to "draw" these
+	//  empty pixels. bitmap.width is the number of pixels that actually
+	//  contain values; bitmap.pitch is the spacing between bitmap
+	//  rows in memory.
+	for (int i = 0; i < (int)mFace->glyph->bitmap.rows; i++)
+	{
+		// Row offset is the distance from the top of the framebuffer
+		//  of this particular row of pixels in the glyph.
+		int row_offset = pY + i + y_off;
+		for (int j = 0; j < (int)mFace->glyph->bitmap.width; j++)
+		{
+			unsigned char p = mFace->glyph->bitmap.buffer [i * mFace->glyph->bitmap.pitch + j];
+
+			// Working out the Y position is a little fiddly. horiBearingY 
+			//  is how far the glyph extends about the baseline. We push
+			//  the bitmap down by the height of the bounding box, and then
+			//  back up by this "bearing" value. 
+			if( p > 127 )
+			{
+//				framebuffer_set_pixel (fb, *x + j + x_off, row_offset, p, p, p);
+				pDest->WritePixel(pX + j + x_off, row_offset, pRed, pGreen, pBlue);
+			}
+		}
+	}
+	// horiAdvance is the nominal X spacing between displayed glyphs. 
+	return pX + advance;
+}
+
+void FreeTypeFont::Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const
+{
+	while(*pText)
+	{
+		pX = DrawChar(pDest,pX,pY,pGreen,pGreen,pBlue,*pText);
+		pText++;
+	};
+}
+
+void FreeTypeFont::Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const
+{
+	char buf[1024];	
+	va_list args;
+	va_start(args, pFmt);
+	vsnprintf(buf, sizeof(buf), pFmt, args);
+	va_end(args);
+	Print(pDest, pX,pY,pGreen,pGreen,pBlue, buf);
+}
+
+void FreeTypeFont::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const
+{
+	Print(pDest,pX,pY,mPenColour.r,mPenColour.g,mPenColour.b,pText);
+}
+
+void FreeTypeFont::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const
+{
+	char buf[1024];	
+	va_list args;
+	va_start(args, pFmt);
+	vsnprintf(buf, sizeof(buf), pFmt, args);
+	va_end(args);
+	Print(pDest, pX,pY,mPenColour.r,mPenColour.g,mPenColour.b, buf);
+}
+
+void FreeTypeFont::SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	mPenColour.r = pRed;
+	mPenColour.g = pGreen;
+	mPenColour.b = pBlue;
+}
+
+#endif //#ifdef USE_FREETYPEFONTS
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace FBIO

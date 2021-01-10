@@ -44,7 +44,7 @@ public:
 		delete []mText;
 	}
 
-	void Render(FBIO::FrameBuffer* pDest,const FBIO::Font& pFont,bool pPressed)
+	void Render(FBIO::FrameBuffer* pDest,const FBIO::PixelFont& pFont,bool pPressed)
 	{
 		pDest->DrawRectangle(mRect.FromX,mRect.FromY,mRect.ToX,mRect.ToY,mFillColour.r,mFillColour.g,mFillColour.b,true);
 	
@@ -173,11 +173,11 @@ int main(int argc, char *argv[])
 	srand(time(NULL));
 
 
-	uint8_t col[8][3] = {{0,0,0},{255,0,0},{0,255,0},{0,0,255},{255,255,255},{255,0,255},{255,255,0},{0,255,255}};
+//	uint8_t col[8][3] = {{0,0,0},{255,0,0},{0,255,0},{0,0,255},{255,255,255},{255,0,255},{255,255,0},{0,255,255}};
 
 	FB->ClearScreen(150,150,150);
 
-	FBIO::Font TheFont(3);
+	FBIO::PixelFont TheFont(3);
 	Button TheButton(100,100,150,50,"This is a button");
 	Button GreenButton(200,200,150,50,"A green button");
 	GreenButton.SetColour(30,150,30);

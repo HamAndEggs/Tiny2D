@@ -14,14 +14,33 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#ifndef __FRAME_BUFFER_H__
-#define __FRAME_BUFFER_H__
+#ifndef FRAME_BUFFER_H
+#define FRAME_BUFFER_H
+
+#ifndef USE_FREETYPEFONTS
+#define USE_FREETYPEFONTS
+#endif
 
 #include <stdint.h>
 #include <linux/fb.h>
 
+/**
+ * @brief The define USE_FREETYPEFONTS allows users of this lib to disable freetype support to reduce code size and dependencies.
+ * Make sure you have freetype dev installed. sudo apt install libfreetype6-dev
+ * Also add /usr/include/freetype2 to your build paths. The include macros need this.
+ */
+#ifdef USE_FREETYPEFONTS
+	#include <freetype2/ft2build.h>
+	#include FT_FREETYPE_H
+#endif
+
 namespace FBIO{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * @brief Represents the linux frame buffer display.
+ * Is able to deal with and abstract out the various pixel formats. 
+ */
 class FrameBuffer
 {
 public:
@@ -34,6 +53,14 @@ public:
 	static FrameBuffer* Open(bool pVerbose = false);
 
 	~FrameBuffer();
+
+	/**
+	 * @brief Get the setting for Verbose debug output.
+	 * 
+	 * @return true 
+	 * @return false 
+	 */
+	bool GetVerbose()const{return mVerbose;}
 
 	/*
 		Returns the width of the frame buffer.
@@ -108,6 +135,15 @@ public:
 	*/
 	void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)const;
 
+#ifdef USE_FREETYPEFONTS
+	/**
+	 * @brief Get the Freetype Library object for use to load fonts.
+	 * 
+	 * @return FT_Library 
+	 */
+	FT_Library GetFreetypeLibrary()const{return mFreetype;}
+#endif // USE_FREETYPEFONTS
+
 private:
 	FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
 
@@ -124,20 +160,32 @@ private:
 	const int mFrameBufferFile;
 	const int mFrameBufferSize;
 	const bool mVerbose;
-	const struct fb_var_screeninfo mVaribleScreenInfo;
+	const struct fb_var_screeninfo mVariableScreenInfo;
 	uint8_t* mFrameBuffer;
+
+#ifdef USE_FREETYPEFONTS
+	/**
+	 * @brief This is for the free type font support.
+	 */
+	FT_Library mFreetype;
+#endif // USE_FREETYPEFONTS
 };
 
-class Font
+/**
+ * @brief This class is for a fast but low quality pixel font.
+ * The base size of the font is 8 by 13 pixels. Any scaling is very crude.
+ * No fancy antialising here. But is very fast.
+ */
+class PixelFont
 {
 public:
-	Font(int pPixelSize = 1);
-	~Font();
+	PixelFont(int pPixelSize = 1);
+	~PixelFont();
 
 	int GetCharWidth()const{return 8*mPixelSize;}
 	int GetCharHeight()const{return 13*mPixelSize;}
 
-	// These render the passed in colour, does not change the pen colour.
+	// These render with the passed in colour, does not change the pen colour.
 	void DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const;
 	void Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
 	void Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
@@ -157,7 +205,44 @@ private:
 		uint8_t r,g,b;
 	}mPenColour;
 };
-   
+
+#ifdef USE_FREETYPEFONTS
+/**
+ * @brief This adds functionality for rendering free type fonts into the framebuffer object.
+ * 
+ */
+class FreeTypeFont
+{
+public:
+	FreeTypeFont(const FrameBuffer* pFrameBuffer,const char* pFontName,int pPixelHeight = 20);
+	~FreeTypeFont();
+
+	bool GetOK()const{return mOK;}
+	int GetCharWidth()const{return 8;}
+	int GetCharHeight()const{return 13;}
+
+	// These render with the passed in colour, does not change the pen colour.
+	int DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,char pChar)const;
+	void Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
+	void Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
+
+	// These use current pen. Just a way to reduce the number of args you need to use for a property that does not change that much.
+	void Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const;
+	void Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const;
+	
+	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+
+private:
+	struct
+	{
+		uint8_t r,g,b;
+	}mPenColour;
+
+	FT_Face mFace;
+	bool mOK;
+};
+#endif //#ifdef USE_FREETYPEFONTS
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace FBIO
 	
