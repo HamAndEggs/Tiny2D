@@ -223,12 +223,21 @@ public:
 	void Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const;
 	
 	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+	void SetBackgroundColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
 private:
+
+	/**
+	 * @brief Rebuilds the mBlended table from the pen and background colours.
+	 */
+	void RecomputeBlendTable();
+
 	struct
-	{
+	{// These are 32bit values to
 		uint8_t r,g,b;
-	}mPenColour;
+	// mBlended is a precomputed lookup for blend from background to pen colour to speed things up a bit.
+	}mPenColour,mBackgroundColour,mBlended[256];
+
 
 	FT_Face mFace;
 	bool mOK;
