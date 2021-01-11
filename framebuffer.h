@@ -131,15 +131,6 @@ public:
 	*/
 	void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)const;
 
-#ifdef USE_FREETYPEFONTS
-	/**
-	 * @brief Get the Freetype Library object for use to load fonts.
-	 * 
-	 * @return FT_Library 
-	 */
-	FT_Library GetFreetypeLibrary()const{return mFreetype;}
-#endif // USE_FREETYPEFONTS
-
 private:
 	FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
 
@@ -158,13 +149,6 @@ private:
 	const bool mVerbose;
 	const struct fb_var_screeninfo mVariableScreenInfo;
 	uint8_t* mFrameBuffer;
-
-#ifdef USE_FREETYPEFONTS
-	/**
-	 * @brief This is for the free type font support.
-	 */
-	FT_Library mFreetype;
-#endif // USE_FREETYPEFONTS
 };
 
 /**
@@ -210,7 +194,7 @@ private:
 class FreeTypeFont
 {
 public:
-	FreeTypeFont(const FrameBuffer* pFrameBuffer,const char* pFontName,int pPixelHeight = 20);
+	FreeTypeFont(const char* pFontName,int pPixelHeight = 40,bool pVerbose = false);
 	~FreeTypeFont();
 
 	bool GetOK()const{return mOK;}
@@ -238,9 +222,16 @@ private:
 	// mBlended is a precomputed lookup for blend from background to pen colour to speed things up a bit.
 	}mPenColour,mBackgroundColour,mBlended[256];
 
-
+	const bool mVerbose;
 	FT_Face mFace;
 	bool mOK;
+
+	/**
+	 * @brief This is for the free type font support.
+	 */
+	static FT_Library mFreetype;
+	static int mFreetypeRefCount;
+
 };
 #endif //#ifdef USE_FREETYPEFONTS
 

@@ -114,29 +114,11 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninf
 	mVariableScreenInfo(pScreenInfo),
 	mFrameBuffer(pFrameBuffer)
 {
-#ifdef USE_FREETYPEFONTS
-	if( FT_Init_FreeType(&mFreetype) != 0 )
-	{
-		if(mVerbose)
-		{
-			std::cout << "Freetype font library created\n";
-		}	
-	}
-#endif //USE_FREETYPEFONTS
+
 }
 
 FrameBuffer::~FrameBuffer()
 {
-#ifdef USE_FREETYPEFONTS
-	if( FT_Done_FreeType(mFreetype) != 0 )
-	{
-		if(mVerbose)
-		{
-			std::cout << "Freetype font library created\n";
-		}	
-	}
-#endif //USE_FREETYPEFONTS
-
 	if(mVerbose)
 	{
 		std::cout << "Freeing frame buffer resources, frame buffer object will be invalid and not unusable.\n";
@@ -1017,7 +999,11 @@ void PixelFont::SetPixelSize(int pPixelSize)
 // The code at https://github.com/kevinboone/fbtextdemo/blob/main/src/main.c
 // was used and copied for reference. Also see http://kevinboone.me/fbtextdemo.html?i=1
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-FreeTypeFont::FreeTypeFont(const FrameBuffer* pFrameBuffer,const char* pFontName,int pPixelHeight):
+FT_Library FreeTypeFont::mFreetype = NULL;
+int FreeTypeFont::mFreetypeRefCount = 0;
+
+FreeTypeFont::FreeTypeFont(const char* pFontName,int pPixelHeight,bool pVerbose):
+	mVerbose(pVerbose),
 	mFace(NULL),
 	mOK(false)
 {
@@ -1026,18 +1012,39 @@ FreeTypeFont::FreeTypeFont(const FrameBuffer* pFrameBuffer,const char* pFontName
 
 	RecomputeBlendTable();
 
-	if( FT_New_Face(pFrameBuffer->GetFreetypeLibrary(),pFontName,0,&mFace) == 0 )
+	if( mFreetype == NULL )
+	{
+		mFreetypeRefCount = 0;
+		if( FT_Init_FreeType(&mFreetype) == 0 )
+		{
+			if(mVerbose)
+			{
+				std::cout << "Freetype font library created\n";
+			}	
+		}
+		else
+		{
+			std::cerr << "Failed to init free type font library.\n";
+		}
+	}
+	mFreetypeRefCount++;
+	if(mVerbose)
+	{
+		std::cout << "mFreetypeRefCount = " << mFreetypeRefCount << '\n';
+	}	
+
+	if( FT_New_Face(mFreetype,pFontName,0,&mFace) == 0 )
 	{
 		if( FT_Set_Pixel_Sizes(mFace,0,pPixelHeight) == 0 )
 		{
 			mOK = true;
 		}
-		else if( pFrameBuffer->GetVerbose() )
+		else if( mVerbose )
 		{
 			std::cerr << "Failed to set pixel size " << pPixelHeight << " for true type font " << pFontName << '\n';
 		}
 	}
-	else if( pFrameBuffer->GetVerbose() )
+	else if( mVerbose )
 	{
 		std::cerr << "Failed to load true type font " << pFontName << '\n';
 	}
@@ -1046,6 +1053,23 @@ FreeTypeFont::FreeTypeFont(const FrameBuffer* pFrameBuffer,const char* pFontName
 FreeTypeFont::~FreeTypeFont()
 {
 	FT_Done_Face(mFace);
+	
+	mFreetypeRefCount--;
+	if( mFreetypeRefCount <= 0 && mFreetype != NULL )
+	{
+		if( FT_Done_FreeType(mFreetype) == 0 )
+		{
+			mFreetype = NULL;
+			if(mVerbose)
+			{
+				std::cout << "Freetype font library deleted\n";
+			}	
+		}
+		else
+		{
+			std::cerr << "Failed to delete free type font library.\n";
+		}
+	}
 }
 
 int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const

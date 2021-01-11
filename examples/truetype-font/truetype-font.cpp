@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
 	FB->ClearScreen(BG_R,BG_G,BG_B);
 
-    FBIO::FreeTypeFont FTFont(FB,"./Blenda Script.otf",80);
+    FBIO::FreeTypeFont FTFont("./Blenda Script.otf",80,true);
     FTFont.SetPenColour(0,0,0);
     FTFont.SetBackgroundColour(BG_R,BG_G,BG_B);
     FTFont.Printf(FB,0,80,"Blenda Script 0123456789 :)");
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     FTFont.SetPenColour(0,255,255);
     FTFont.Print(FB,0,180,"Spacing Test iAlBjXvIoiP X l");
 
-    FBIO::FreeTypeFont FTFont2(FB,"./MachineScript.ttf",50);
+    FBIO::FreeTypeFont FTFont2("./MachineScript.ttf",50,true);
     FTFont2.SetPenColour(0,255,0);
     FTFont2.SetBackgroundColour(BG_R,BG_G,BG_B);
     FTFont2.Print(FB,10,300,"Test Number 0123456789");
