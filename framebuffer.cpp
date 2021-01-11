@@ -1044,10 +1044,12 @@ FreeTypeFont::~FreeTypeFont()
 	FT_Done_Face(mFace);
 }
 
-int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,char pChar)const
+int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const
 {
 	if( !mOK )
 		return 0;
+
+	// Comments from original example source by Kevin Boone. http://kevinboone.me/fbtextdemo.html?i=1
 
 	// Note that TT fonts have no built-in padding. 
 	// That is, first,
@@ -1079,7 +1081,7 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t
 	}
 
 	// Loading the glyph makes metrics data available
-	if( FT_Load_Glyph (mFace, gi, FT_LOAD_DEFAULT) != 0 )
+	if( FT_Load_Glyph (mFace, gi, FT_LOAD_DEFAULT ) != 0 )
 	{
 		return 0;
 	}
@@ -1113,7 +1115,7 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t
 	//   start drawing the glyph bitmap.
 
 	// Rendering a loaded glyph creates the bitmap
-	if( FT_Render_Glyph(mFace->glyph, FT_RENDER_MODE_NORMAL) != 0 )
+	if( FT_Render_Glyph(mFace->glyph, FT_RENDER_MODE_MONO) != 0 )
 	{
 		return 0;
 	}
@@ -1138,10 +1140,10 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t
 			//  is how far the glyph extends about the baseline. We push
 			//  the bitmap down by the height of the bounding box, and then
 			//  back up by this "bearing" value. 
-			if( p > 127 )
+			if( p > 0 )
 			{
-//				framebuffer_set_pixel (fb, *x + j + x_off, row_offset, p, p, p);
-				pDest->WritePixel(pX + j + x_off, row_offset, pRed, pGreen, pBlue);
+//				pDest->WritePixel(pX + j + x_off, row_offset, mPenColour.r, mPenColour.g, mPenColour.b);
+				pDest->WritePixel(pX + j + x_off, row_offset, p,p,p);
 			}
 		}
 	}
@@ -1149,28 +1151,13 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t
 	return pX + advance;
 }
 
-void FreeTypeFont::Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const
+void FreeTypeFont::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const
 {
 	while(*pText)
 	{
-		pX = DrawChar(pDest,pX,pY,pGreen,pGreen,pBlue,*pText);
+		pX = DrawChar(pDest,pX,pY,*pText);
 		pText++;
 	};
-}
-
-void FreeTypeFont::Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const
-{
-	char buf[1024];	
-	va_list args;
-	va_start(args, pFmt);
-	vsnprintf(buf, sizeof(buf), pFmt, args);
-	va_end(args);
-	Print(pDest, pX,pY,pGreen,pGreen,pBlue, buf);
-}
-
-void FreeTypeFont::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const
-{
-	Print(pDest,pX,pY,mPenColour.r,mPenColour.g,mPenColour.b,pText);
 }
 
 void FreeTypeFont::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const
@@ -1180,7 +1167,7 @@ void FreeTypeFont::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)
 	va_start(args, pFmt);
 	vsnprintf(buf, sizeof(buf), pFmt, args);
 	va_end(args);
-	Print(pDest, pX,pY,mPenColour.r,mPenColour.g,mPenColour.b, buf);
+	Print(pDest,pX,pY,buf);
 }
 
 void FreeTypeFont::SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)

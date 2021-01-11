@@ -17,11 +17,6 @@
 #ifndef FRAME_BUFFER_H
 #define FRAME_BUFFER_H
 
-// For when using visual studio....
-//#ifndef USE_FREETYPEFONTS
-//#define USE_FREETYPEFONTS
-//#endif
-
 #include <stdint.h>
 #include <linux/fb.h>
 
@@ -223,11 +218,7 @@ public:
 	int GetCharHeight()const{return 13;}
 
 	// These render with the passed in colour, does not change the pen colour.
-	int DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,char pChar)const;
-	void Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
-	void Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
-
-	// These use current pen. Just a way to reduce the number of args you need to use for a property that does not change that much.
+	int DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const;
 	void Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const;
 	void Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const;
 	
@@ -247,5 +238,4 @@ private:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace FBIO
 	
-#endif //__FRAME_BUFFER_H__
-	  
+#endif //FRAME_BUFFER_H
