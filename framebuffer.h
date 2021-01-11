@@ -17,11 +17,6 @@
 #ifndef FRAME_BUFFER_H
 #define FRAME_BUFFER_H
 
-// For when using visual studio....
-//#ifndef USE_FREETYPEFONTS
-//#define USE_FREETYPEFONTS
-//#endif
-
 #include <stdint.h>
 #include <linux/fb.h>
 
@@ -136,15 +131,6 @@ public:
 	*/
 	void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)const;
 
-#ifdef USE_FREETYPEFONTS
-	/**
-	 * @brief Get the Freetype Library object for use to load fonts.
-	 * 
-	 * @return FT_Library 
-	 */
-	FT_Library GetFreetypeLibrary()const{return mFreetype;}
-#endif // USE_FREETYPEFONTS
-
 private:
 	FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
 
@@ -163,13 +149,6 @@ private:
 	const bool mVerbose;
 	const struct fb_var_screeninfo mVariableScreenInfo;
 	uint8_t* mFrameBuffer;
-
-#ifdef USE_FREETYPEFONTS
-	/**
-	 * @brief This is for the free type font support.
-	 */
-	FT_Library mFreetype;
-#endif // USE_FREETYPEFONTS
 };
 
 /**
@@ -215,7 +194,7 @@ private:
 class FreeTypeFont
 {
 public:
-	FreeTypeFont(const FrameBuffer* pFrameBuffer,const char* pFontName,int pPixelHeight = 20);
+	FreeTypeFont(const char* pFontName,int pPixelHeight = 40,bool pVerbose = false);
 	~FreeTypeFont();
 
 	bool GetOK()const{return mOK;}
@@ -223,29 +202,40 @@ public:
 	int GetCharHeight()const{return 13;}
 
 	// These render with the passed in colour, does not change the pen colour.
-	int DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,char pChar)const;
-	void Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
-	void Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
-
-	// These use current pen. Just a way to reduce the number of args you need to use for a property that does not change that much.
+	int DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const;
 	void Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const;
 	void Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const;
 	
 	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+	void SetBackgroundColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
 private:
-	struct
-	{
-		uint8_t r,g,b;
-	}mPenColour;
 
+	/**
+	 * @brief Rebuilds the mBlended table from the pen and background colours.
+	 */
+	void RecomputeBlendTable();
+
+	struct
+	{// These are 32bit values to
+		uint8_t r,g,b;
+	// mBlended is a precomputed lookup for blend from background to pen colour to speed things up a bit.
+	}mPenColour,mBackgroundColour,mBlended[256];
+
+	const bool mVerbose;
 	FT_Face mFace;
 	bool mOK;
+
+	/**
+	 * @brief This is for the free type font support.
+	 */
+	static FT_Library mFreetype;
+	static int mFreetypeRefCount;
+
 };
 #endif //#ifdef USE_FREETYPEFONTS
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace FBIO
 	
-#endif //__FRAME_BUFFER_H__
-	  
+#endif //FRAME_BUFFER_H

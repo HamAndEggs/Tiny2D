@@ -114,29 +114,11 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninf
 	mVariableScreenInfo(pScreenInfo),
 	mFrameBuffer(pFrameBuffer)
 {
-#ifdef USE_FREETYPEFONTS
-	if( FT_Init_FreeType(&mFreetype) != 0 )
-	{
-		if(mVerbose)
-		{
-			std::cout << "Freetype font library created\n";
-		}	
-	}
-#endif //USE_FREETYPEFONTS
+
 }
 
 FrameBuffer::~FrameBuffer()
 {
-#ifdef USE_FREETYPEFONTS
-	if( FT_Done_FreeType(mFreetype) != 0 )
-	{
-		if(mVerbose)
-		{
-			std::cout << "Freetype font library created\n";
-		}	
-	}
-#endif //USE_FREETYPEFONTS
-
 	if(mVerbose)
 	{
 		std::cout << "Freeing frame buffer resources, frame buffer object will be invalid and not unusable.\n";
@@ -1017,23 +999,52 @@ void PixelFont::SetPixelSize(int pPixelSize)
 // The code at https://github.com/kevinboone/fbtextdemo/blob/main/src/main.c
 // was used and copied for reference. Also see http://kevinboone.me/fbtextdemo.html?i=1
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-FreeTypeFont::FreeTypeFont(const FrameBuffer* pFrameBuffer,const char* pFontName,int pPixelHeight):
+FT_Library FreeTypeFont::mFreetype = NULL;
+int FreeTypeFont::mFreetypeRefCount = 0;
+
+FreeTypeFont::FreeTypeFont(const char* pFontName,int pPixelHeight,bool pVerbose):
+	mVerbose(pVerbose),
 	mFace(NULL),
 	mOK(false)
 {
-	if( FT_New_Face(pFrameBuffer->GetFreetypeLibrary(),pFontName,0,&mFace) == 0 )
+	mPenColour.r = mPenColour.g = mPenColour.b = 255;
+	mBackgroundColour.r = mBackgroundColour.g = mBackgroundColour.b = 0;
+
+	RecomputeBlendTable();
+
+	if( mFreetype == NULL )
 	{
-		SetPenColour(255,255,255);
+		mFreetypeRefCount = 0;
+		if( FT_Init_FreeType(&mFreetype) == 0 )
+		{
+			if(mVerbose)
+			{
+				std::cout << "Freetype font library created\n";
+			}	
+		}
+		else
+		{
+			std::cerr << "Failed to init free type font library.\n";
+		}
+	}
+	mFreetypeRefCount++;
+	if(mVerbose)
+	{
+		std::cout << "mFreetypeRefCount = " << mFreetypeRefCount << '\n';
+	}	
+
+	if( FT_New_Face(mFreetype,pFontName,0,&mFace) == 0 )
+	{
 		if( FT_Set_Pixel_Sizes(mFace,0,pPixelHeight) == 0 )
 		{
 			mOK = true;
 		}
-		else if( pFrameBuffer->GetVerbose() )
+		else if( mVerbose )
 		{
 			std::cerr << "Failed to set pixel size " << pPixelHeight << " for true type font " << pFontName << '\n';
 		}
 	}
-	else if( pFrameBuffer->GetVerbose() )
+	else if( mVerbose )
 	{
 		std::cerr << "Failed to load true type font " << pFontName << '\n';
 	}
@@ -1042,12 +1053,31 @@ FreeTypeFont::FreeTypeFont(const FrameBuffer* pFrameBuffer,const char* pFontName
 FreeTypeFont::~FreeTypeFont()
 {
 	FT_Done_Face(mFace);
+	
+	mFreetypeRefCount--;
+	if( mFreetypeRefCount <= 0 && mFreetype != NULL )
+	{
+		if( FT_Done_FreeType(mFreetype) == 0 )
+		{
+			mFreetype = NULL;
+			if(mVerbose)
+			{
+				std::cout << "Freetype font library deleted\n";
+			}	
+		}
+		else
+		{
+			std::cerr << "Failed to delete free type font library.\n";
+		}
+	}
 }
 
-int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,char pChar)const
+int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const
 {
 	if( !mOK )
-		return 0;
+		return pX;
+
+	// Comments from original example source by Kevin Boone. http://kevinboone.me/fbtextdemo.html?i=1
 
 	// Note that TT fonts have no built-in padding. 
 	// That is, first,
@@ -1073,15 +1103,13 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t
 	FT_UInt gi = FT_Get_Char_Index (mFace, pChar);
 	if( gi == 0 )
 	{// Character not found, so default to space.
-		gi = FT_Get_Char_Index (mFace, ' ');
-		if( gi == 0 )
-			return 0;
+		return pX + (mFace->bbox.xMax / 64);
 	}
 
 	// Loading the glyph makes metrics data available
-	if( FT_Load_Glyph (mFace, gi, FT_LOAD_DEFAULT) != 0 )
+	if( FT_Load_Glyph (mFace, gi, FT_LOAD_DEFAULT ) != 0 )
 	{
-		return 0;
+		return pX;
 	}
 
 	// Now we have the metrics, let's work out the x and y offset
@@ -1092,7 +1120,9 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t
 
 	// bbox.yMax is the height of a bounding box that will enclose
 	//  any glyph in the face, starting from the glyph baseline.
-	int bbox_ymax = mFace->bbox.yMax / 64;
+// Code changed, was casing it to render in the Y center of the font not on the base line. Will add it as an option in the future. Richard.
+	int bbox_ymax = 0;//mFace->bbox.yMax / 64;
+
 	// horiBearingX is the height of the top of the glyph from
 	//   the baseline. So we work out the y offset -- the distance
 	//   we must push down the glyph from the top of the bounding
@@ -1101,9 +1131,11 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t
 
 	// glyph_width is the pixel width of this specific glyph
 	int glyph_width = mFace->glyph->metrics.width / 64;
+
 	// Advance is the amount of x spacing, in pixels, allocated
 	//   to this glyph
 	int advance = mFace->glyph->metrics.horiAdvance / 64;
+
 	// Work out where to draw the left-most row of pixels --
 	//   the x offset -- by halving the space between the 
 	//   glyph width and the advance
@@ -1115,7 +1147,7 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t
 	// Rendering a loaded glyph creates the bitmap
 	if( FT_Render_Glyph(mFace->glyph, FT_RENDER_MODE_NORMAL) != 0 )
 	{
-		return 0;
+		return pX;
 	}
 
 	// Write out the glyph row-by-row using framebuffer_set_pixel
@@ -1125,23 +1157,27 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t
 	//  empty pixels. bitmap.width is the number of pixels that actually
 	//  contain values; bitmap.pitch is the spacing between bitmap
 	//  rows in memory.
-	for (int i = 0; i < (int)mFace->glyph->bitmap.rows; i++)
+	const uint8_t* src = mFace->glyph->bitmap.buffer;
+	for (int i = 0; i < (int)mFace->glyph->bitmap.rows; i++ , src += mFace->glyph->bitmap.pitch )
 	{
 		// Row offset is the distance from the top of the framebuffer
 		//  of this particular row of pixels in the glyph.
 		int row_offset = pY + i + y_off;
-		for (int j = 0; j < (int)mFace->glyph->bitmap.width; j++)
+		for (int j = 0; j < (int)mFace->glyph->bitmap.width; j++ )
 		{
-			unsigned char p = mFace->glyph->bitmap.buffer [i * mFace->glyph->bitmap.pitch + j];
+			const uint8_t p = src[j];
 
 			// Working out the Y position is a little fiddly. horiBearingY 
 			//  is how far the glyph extends about the baseline. We push
 			//  the bitmap down by the height of the bounding box, and then
-			//  back up by this "bearing" value. 
-			if( p > 127 )
+			//  back up by this "bearing" value.
+
+			// As I am not blending against the background I have to do this test.
+			// Otherwise we state to crop previous letters.
+			// Should really be blending agaist the background. But that is slow.... Richard.
+			if( p > 0 )
 			{
-//				framebuffer_set_pixel (fb, *x + j + x_off, row_offset, p, p, p);
-				pDest->WritePixel(pX + j + x_off, row_offset, pRed, pGreen, pBlue);
+				pDest->WritePixel(pX + j + x_off, row_offset, mBlended[p].r, mBlended[p].g, mBlended[p].b);
 			}
 		}
 	}
@@ -1149,28 +1185,13 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t
 	return pX + advance;
 }
 
-void FreeTypeFont::Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const
+void FreeTypeFont::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const
 {
 	while(*pText)
 	{
-		pX = DrawChar(pDest,pX,pY,pGreen,pGreen,pBlue,*pText);
+		pX = DrawChar(pDest,pX,pY,*pText);
 		pText++;
 	};
-}
-
-void FreeTypeFont::Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const
-{
-	char buf[1024];	
-	va_list args;
-	va_start(args, pFmt);
-	vsnprintf(buf, sizeof(buf), pFmt, args);
-	va_end(args);
-	Print(pDest, pX,pY,pGreen,pGreen,pBlue, buf);
-}
-
-void FreeTypeFont::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const
-{
-	Print(pDest,pX,pY,mPenColour.r,mPenColour.g,mPenColour.b,pText);
 }
 
 void FreeTypeFont::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const
@@ -1180,7 +1201,7 @@ void FreeTypeFont::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)
 	va_start(args, pFmt);
 	vsnprintf(buf, sizeof(buf), pFmt, args);
 	va_end(args);
-	Print(pDest, pX,pY,mPenColour.r,mPenColour.g,mPenColour.b, buf);
+	Print(pDest,pX,pY,buf);
 }
 
 void FreeTypeFont::SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
@@ -1188,6 +1209,34 @@ void FreeTypeFont::SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 	mPenColour.r = pRed;
 	mPenColour.g = pGreen;
 	mPenColour.b = pBlue;
+	RecomputeBlendTable();
+}
+
+void FreeTypeFont::SetBackgroundColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	mBackgroundColour.r = pRed;
+	mBackgroundColour.g = pGreen;
+	mBackgroundColour.b = pBlue;
+	RecomputeBlendTable();
+}
+
+void FreeTypeFont::RecomputeBlendTable()
+{
+	for( uint32_t p = 0 ; p < 256 ; p++ )
+	{
+		const uint32_t np = 255 - p;
+		mBlended[p].r = (uint8_t)( (((uint32_t)mPenColour.r * p)  + ((uint32_t)mBackgroundColour.r * np)) / 255 );
+		mBlended[p].g = (uint8_t)( (((uint32_t)mPenColour.g * p)  + ((uint32_t)mBackgroundColour.g * np)) / 255 );
+		mBlended[p].b = (uint8_t)( (((uint32_t)mPenColour.b * p)  + ((uint32_t)mBackgroundColour.b * np)) / 255 );		
+	}
+	/*
+	for(int n = 0 ; n < 256 ; n++ )
+	{
+		std::cout << "mBlended[" << n << "].r = " << (int)mBlended[n].r << ' ';
+		std::cout << "mBlended[" << n << "].g = " << (int)mBlended[n].g << ' ';
+		std::cout << "mBlended[" << n << "].b = " << (int)mBlended[n].b << '\n';
+	}
+*/
 }
 
 #endif //#ifdef USE_FREETYPEFONTS

@@ -44,25 +44,34 @@ int main(int argc, char *argv[])
 
 	srand(time(NULL));
 
-	FB->ClearScreen(100,100,100);
+    const uint8_t BG_R = 255;
+    const uint8_t BG_G = 0;
+    const uint8_t BG_B = 0;
 
-	FBIO::PixelFont TheFont(3);
-	TheFont.SetPenColour(0,0,0);
+	FB->ClearScreen(BG_R,BG_G,BG_B);
 
-    FB->DrawRectangle(9*8*5,0,19*8*5,13*5,150,150,150,true);
-    TheFont.SetPixelSize(5);
-    TheFont.Printf(FB,0,0,"Pixel Font %d",rand());
-
-//    FBIO::FreeTypeFont FTFont(FB,"/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",60);
-    FBIO::FreeTypeFont FTFont(FB,"./Z003-MediumItalic.otf",90);
+    FBIO::FreeTypeFont FTFont("./Blenda Script.otf",80,true);
     FTFont.SetPenColour(0,0,0);
-    FTFont.Printf(FB,10,150,"True Type Font %d",rand());
+    FTFont.SetBackgroundColour(BG_R,BG_G,BG_B);
+    FTFont.Printf(FB,0,80,"Blenda Script 0123456789 :)");
 
-    FTFont.Print(FB,10,300,"iAlBjXvIoIoiPiTiZilQlFl l l");
+    FTFont.SetPenColour(0,255,255);
+    FTFont.Print(FB,0,180,"Spacing Test iAlBjXvIoiP X l");
 
-    FBIO::FreeTypeFont FTFont2(FB,"./NimbusMonoPS-BoldItalic.otf",60);
-    FTFont2.SetPenColour(0,0,0);
-    FTFont2.Printf(FB,10,500,"True Type Font %d",rand());
+    FBIO::FreeTypeFont FTFont2("./MachineScript.ttf",50,true);
+    FTFont2.SetPenColour(0,255,0);
+    FTFont2.SetBackgroundColour(BG_R,BG_G,BG_B);
+    FTFont2.Print(FB,10,300,"Test Number 0123456789");
+    FTFont2.Print(FB,10,400,"Random Number");
+
+    FTFont2.SetPenColour(255,255,255);
+    FTFont2.SetBackgroundColour(0,0,0);
+    while( KeepGoing )
+    {
+        FB->DrawRectangle(500,350,1000,420,0,0,0,true);
+        FTFont2.Printf(FB,500,400,"%d",rand());
+        sleep(1);
+    }
 
 	delete FB;
 
