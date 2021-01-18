@@ -199,13 +199,11 @@ void FrameBuffer::Present()
 
 void FrameBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 {
-	assert( pX >= 0 && pX < mWidth );
-	assert( pY >= 0 && pY < mHeight );
 	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
 	{
-		// When optised by compiler these const vars will
+		// When optimized by compiler these const vars will
 		// all move to generate the same code as if I made it all one line and unreadable!
-		// Trust your optimiser. :)
+		// Trust your optimizer. :)
 		const int RedShift = mVariableScreenInfo.red.offset;
 		const int GreenShift = mVariableScreenInfo.green.offset;
 		const int BlueShift = mVariableScreenInfo.blue.offset;
@@ -1266,7 +1264,9 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const
 			// Should really be blending agaist the background. But that is slow.... Richard.
 			if( p > 0 )
 			{
-				pDest->WritePixel(pX + j + x_off, row_offset, mBlended[p].r, mBlended[p].g, mBlended[p].b);
+				const int pixelX = pX + j + x_off;
+				const int pixelY = row_offset;
+				pDest->WritePixel(pixelX,pixelY, mBlended[p].r, mBlended[p].g, mBlended[p].b);
 			}
 		}
 	}
@@ -1318,14 +1318,6 @@ void FreeTypeFont::RecomputeBlendTable()
 		mBlended[p].g = (uint8_t)( (((uint32_t)mPenColour.g * p)  + ((uint32_t)mBackgroundColour.g * np)) / 255 );
 		mBlended[p].b = (uint8_t)( (((uint32_t)mPenColour.b * p)  + ((uint32_t)mBackgroundColour.b * np)) / 255 );		
 	}
-	/*
-	for(int n = 0 ; n < 256 ; n++ )
-	{
-		std::cout << "mBlended[" << n << "].r = " << (int)mBlended[n].r << ' ';
-		std::cout << "mBlended[" << n << "].g = " << (int)mBlended[n].g << ' ';
-		std::cout << "mBlended[" << n << "].b = " << (int)mBlended[n].b << '\n';
-	}
-*/
 }
 
 #endif //#ifdef USE_FREETYPEFONTS
@@ -1434,7 +1426,8 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 							0);
 
 	mRunMessagePump = true;
-	mMessagePump = std::thread([this]()
+	bool ExposeReceived = false;
+	mMessagePump = std::thread([this,&ExposeReceived]()
 	{
 		// So I can exit cleanly if the user uses the close window button.
 		Atom wmDeleteMessage = XInternAtom(mDisplay, "WM_DELETE_WINDOW", False);
@@ -1447,6 +1440,7 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 			switch( e.type )
 			{
 			case Expose:
+				ExposeReceived = true;
 				break;
 
 			case ClientMessage:
@@ -1466,6 +1460,13 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 			}
 		};
 	});
+
+	// wait for the expose message.
+  	timespec SleepTime = {0,1000000};
+	while( !ExposeReceived )
+	{
+		nanosleep(&SleepTime,NULL);
+	}
 
 	return true;
 }

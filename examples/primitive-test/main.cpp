@@ -2,23 +2,9 @@
 #include <iostream>
 #include <cstdlib>
 #include <time.h>
-#include <signal.h>
 
 #include "framebuffer.h"
 
-bool KeepGoing = true;
-
-void static CtrlHandler(int SigNum)
-{
-	static int numTimesAskedToExit = 0;
-	std::cout << std::endl << "Asked to quit, please wait" << std::endl;
-	if( numTimesAskedToExit > 2 )
-	{
-		std::cout << "Asked to quit to many times, forcing exit in bad way" << std::endl;
-		exit(1);
-	}
-	KeepGoing = false;
-}
 
 int main(int argc, char *argv[])
 {	
@@ -26,15 +12,13 @@ int main(int argc, char *argv[])
 	if( !FB )
 		return 1;
 
-	signal (SIGINT,CtrlHandler);
-
 	srand(time(NULL));
 
 	FB->ClearScreen(0,0,0);
 
 	uint8_t col[8][3] = {{0,0,0},{255,0,0},{0,255,0},{0,0,255},{255,255,255},{255,0,255},{255,255,0},{0,255,255}};
 	
-	while(KeepGoing)
+	while(FB->GetKeepGoing())
 	{
 		{
 			int r = (rand()%50)+10;
@@ -66,6 +50,8 @@ int main(int argc, char *argv[])
 
 			FB->DrawRectangle(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
 		}
+
+		FB->Present();
 	}
 
 	// Stop monitor burn in...

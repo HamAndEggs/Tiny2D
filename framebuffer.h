@@ -109,9 +109,15 @@ public:
 	 */
 	void Present();
 
-	/*
-		Writes a single pixel with the passed red, green and blue values. 0 -> 255, 0 being off 255 being full on.
-	*/
+	/**
+	 * @brief Writes a single pixel with the passed red, green and blue values. 0 -> 255, 0 being off 255 being full on.
+	 * The pixel will not be written if it's outside the frame buffers bounds.
+	 * @param pX 
+	 * @param pY 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 */
 	void WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
 	/*

@@ -4,14 +4,8 @@
 	{
 		"release":
 		{
-			"target":"executable",
-			"compiler":"gcc",
-			"linker":"gcc",
-			"archiver":"ar",
-			"output_path":"./bin/release",
-			"output_name":"runme",
-			"standard":"c++11",
 			"optimisation":"3",
+            "debug_level": "0",
 			"include":
 			[
 				"/usr/include/",
@@ -25,13 +19,6 @@
 		},
 		"x11":
 		{
-			"target":"executable",
-			"compiler":"gcc",
-			"linker":"gcc",
-			"archiver":"ar",
-			"output_path":"./bin/x11",
-			"output_name":"runme",
-			"standard":"c++14",
             "optimisation": "0",
             "debug_level": "2",
             "warnings_as_errors": false,

@@ -1,27 +1,13 @@
 #include <iostream>
 #include <cstdlib>
 #include <time.h>
-#include <signal.h>
+
 #include <thread>
 #include <math.h>
 #include <unistd.h>
 #include <vector>
 
 #include "framebuffer.h"
-
-bool KeepGoing = true;
-
-void static CtrlHandler(int SigNum)
-{
-	static int numTimesAskedToExit = 0;
-	std::cout << std::endl << "Asked to quit, please wait" << std::endl;
-	if( numTimesAskedToExit > 2 )
-	{
-		std::cout << "Asked to quit to many times, forcing exit in bad way" << std::endl;
-		exit(1);
-	}
-	KeepGoing = false;
-}
 
 class Ball
 {
@@ -129,8 +115,6 @@ int main(int argc, char *argv[])
 	if( !FB )
 		return 1;
 
-	signal (SIGINT,CtrlHandler);
-
 	srand(time(NULL));
 
 	FB->ClearScreen(0,0,0);
@@ -152,7 +136,7 @@ int main(int argc, char *argv[])
 
 	const int HeightSplit = Height/4;
 
-	while( KeepGoing )
+	while( FB->GetKeepGoing() )
 	{
 		for( auto &ball : TheBalls )
 			ball.Update(Width,Height);
@@ -176,6 +160,8 @@ int main(int argc, char *argv[])
 		thread2.join();
 		thread3.join();
 		thread4.join();
+
+		FB->Present();
 	};
 
 	// Stop monitor burn in...

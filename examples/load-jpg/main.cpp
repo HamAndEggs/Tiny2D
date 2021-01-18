@@ -242,6 +242,12 @@ int main(int argc, char *argv[])
 		if( FB )
 		{
 			read_JPEG_file(argv[1],FB);
+			FB->Present();
+
+#ifdef USE_X11_EMULATION
+	sleep(5);
+#endif
+			
 			delete FB;
 			FB = NULL;
 		}
