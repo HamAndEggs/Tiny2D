@@ -17,8 +17,25 @@
 #ifndef FRAME_BUFFER_H
 #define FRAME_BUFFER_H
 
+#include <signal.h>
 #include <stdint.h>
 #include <linux/fb.h>
+
+/**
+ * @brief define USE_X11_EMULATION for a system running X11.
+ * This codebase is targeting systems without X11, but sometimes we want to develop on a system with it.
+ * This define allows that. But is expected to be used ONLY for development.
+ * To set window draw size define X11_EMULATION_WIDTH and X11_EMULATION_HEIGHT
+ */
+#ifdef USE_X11_EMULATION
+	#ifndef X11_EMULATION_WIDTH
+		#define X11_EMULATION_WIDTH 1024
+	#endif
+
+	#ifndef X11_EMULATION_HEIGHT
+		#define X11_EMULATION_HEIGHT 600
+	#endif
+#endif
 
 /**
  * @brief The define USE_FREETYPEFONTS allows users of this lib to disable freetype support to reduce code size and dependencies.
@@ -33,6 +50,7 @@
 namespace FBIO{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+struct X11FrameBufferEmulation;
 /**
  * @brief Represents the linux frame buffer display.
  * Is able to deal with and abstract out the various pixel formats. 
@@ -40,12 +58,15 @@ namespace FBIO{	// Using a namespace to try to prevent name clashes as my class 
 class FrameBuffer
 {
 public:
-	/*
-		Creates and opens a FrameBuffer object.
-		If the OS does not support the frame buffer driver or there is some other error,
-		this function will return NULL.
-		Set pVerbose to true to get debugging information as the object is created.
-	*/
+
+	/**
+	 * @brief Creates and opens a FrameBuffer object.
+	 * If the OS does not support the frame buffer driver or there is some other error,
+	 * this function will return NULL.
+	 * 
+	 * @param pVerbose get debugging information as the object is created.
+	 * @return FrameBuffer* 
+	 */
 	static FrameBuffer* Open(bool pVerbose = false);
 
 	~FrameBuffer();
@@ -68,13 +89,33 @@ public:
 	*/
 	int GetHeight()const{return mHeight;}
 
+	/**
+	 * @brief See if the app main loop should keep going.
+	 * 
+	 * @return true All is ok, so keep running.
+	 * @return false Either the user requested an exit with ctrl+c or there was an error.
+	 */
+	bool GetKeepGoing()const{return FrameBuffer::mKeepGoing;}
+
+	/**
+	 * @brief Sets the flag for the main loop to false.
+	 * You can only set it to false to prevet miss uses.
+	 */
+	static void SetKeepGoingFalse(){FrameBuffer::mKeepGoing = false;}
+
+	/**
+	 * @brief Depending on the buffering mode and the render environment will display the changes to the frame buffer on screen.
+	 * 
+	 */
+	void Present();
+
 	/*
 		Writes a single pixel with the passed red, green and blue values. 0 -> 255, 0 being off 255 being full on.
 	*/
 	void WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
 	/*
-		Clears the entrie screen.
+		Clears the entire screen.
 	*/
 	void ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
@@ -141,6 +182,13 @@ private:
 	*/
 	void DrawLineBresenham(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
+	/**
+	 * @brief Handle ctrl + c event.
+	 * 
+	 * @param SigNum 
+	 */
+	static void CtrlHandler(int SigNum);
+
 	const int mWidth,mHeight;
 	const int mStride;// Num bytes between each line.
 	const int mPixelSize;	// The byte count of each pixel. So to move in the x by one pixel.
@@ -149,6 +197,21 @@ private:
 	const bool mVerbose;
 	const struct fb_var_screeninfo mVariableScreenInfo;
 	uint8_t* mFrameBuffer;
+
+	/**
+	 * @brief set to false by the ctrl + c handler.
+	 */
+	static bool mKeepGoing;
+
+	/**
+	 * @brief I trap ctrl + c. Because someone may also do this I record their handler and call it when mine is.
+	 * You do not need to handle ctrl + c if you use the member function GetKeepGoing to keep your rendering look going.
+	 */
+	static sighandler_t mUsersSignalAction;
+
+#ifdef USE_X11_EMULATION
+	X11FrameBufferEmulation* mX11;
+#endif
 };
 
 /**

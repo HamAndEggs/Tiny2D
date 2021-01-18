@@ -28,9 +28,50 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
+#ifdef USE_X11_EMULATION
+	#include <X11/Xlib.h>
+	#include <X11/Xutil.h>
+	#include <thread>
+#endif
+
 #include "framebuffer.h"
 
 namespace FBIO{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// X11 frame buffer emulation hidden definition.
+// Implementation is at the bottom of the source file.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef USE_X11_EMULATION
+/**
+ * @brief Emulation layer for X11
+ * 
+ */
+struct X11FrameBufferEmulation
+{
+	Display *mDisplay;
+	Window mWindow;
+	XImage* mFrameBufferImage;
+
+	bool mRunMessagePump;
+	uint8_t* mFrameBuffer;
+	std::thread mMessagePump;
+	struct fb_fix_screeninfo mFixInfo;
+	struct fb_var_screeninfo mVarInfo;
+
+	X11FrameBufferEmulation();
+	~X11FrameBufferEmulation();
+
+	bool Open(bool pVerbose);
+
+	/**
+	 * @brief Draws the frame buffer to the X11 window.
+	 * 
+	 */
+	void Present();
+
+};
+#endif //#ifdef USE_X11_EMULATION
 	
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // FrameBuffer Implementation.
@@ -38,6 +79,20 @@ namespace FBIO{	// Using a namespace to try to prevent name clashes as my class 
 FrameBuffer* FrameBuffer::Open(bool pVerbose)
 {
 	FrameBuffer* newFrameBuffer = NULL;
+
+#ifdef USE_X11_EMULATION
+	X11FrameBufferEmulation* newX11 = new X11FrameBufferEmulation();
+	if( newX11->Open(pVerbose) )
+	{
+		newFrameBuffer = new FrameBuffer(0,newX11->mFrameBuffer,newX11->mFixInfo,newX11->mVarInfo,pVerbose);
+		newFrameBuffer->mX11 = newX11;
+	}
+	else
+	{
+		delete newX11;
+	}
+	
+#else
 
 	// Open the file for reading and writing
 	int File = open("/dev/fb0", O_RDWR);
@@ -99,6 +154,7 @@ FrameBuffer* FrameBuffer::Open(bool pVerbose)
 			std::cerr << "Error: cannot open framebuffer device.\n";
 		}
 	}
+#endif //#ifdef USE_X11_EMULATION
 
 	return newFrameBuffer;
 }
@@ -114,11 +170,16 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninf
 	mVariableScreenInfo(pScreenInfo),
 	mFrameBuffer(pFrameBuffer)
 {
-
+	FrameBuffer::mKeepGoing = true;
+	// Lets hook ctrl + c.
+	mUsersSignalAction = signal(SIGINT,CtrlHandler);
 }
 
 FrameBuffer::~FrameBuffer()
 {
+#ifdef USE_X11_EMULATION
+	delete mX11;
+#else
 	if(mVerbose)
 	{
 		std::cout << "Freeing frame buffer resources, frame buffer object will be invalid and not unusable.\n";
@@ -126,6 +187,14 @@ FrameBuffer::~FrameBuffer()
 
 	munmap((void*)mFrameBuffer,mFrameBufferSize);
 	close(mFrameBufferFile);
+#endif //#ifdef USE_X11_EMULATION
+}
+
+void FrameBuffer::Present()
+{
+#ifdef USE_X11_EMULATION
+	mX11->Present();
+#endif //#ifdef USE_X11_EMULATION
 }
 
 void FrameBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
@@ -530,7 +599,7 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 		DrawLineH(pFromX,pToY,pToX,pRed,pGreen,pBlue);
 
 		DrawLineV(pFromX,pFromY,pToY,pRed,pGreen,pBlue);
-		DrawLineV(pToX,pToY,pToY,pRed,pGreen,pBlue);
+		DrawLineV(pToX,pFromY,pToY,pRed,pGreen,pBlue);
 	}
 }
 
@@ -605,6 +674,26 @@ void FrameBuffer::HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen
 	rGreen = (uint8_t)(G * 255.0f);
 	rBlue = (uint8_t)(B * 255.0f);
 }
+
+sighandler_t FrameBuffer::mUsersSignalAction = NULL;
+bool FrameBuffer::mKeepGoing = false;
+void FrameBuffer::CtrlHandler(int SigNum)
+{
+	static int numTimesAskedToExit = 0;
+	if( mUsersSignalAction != NULL )
+	{
+		mUsersSignalAction(SigNum);
+	}
+
+	if( numTimesAskedToExit > 2 )
+	{
+		std::cerr << "Asked to quit to many times, forcing exit in bad way\n";
+		exit(1);
+	}
+	FrameBuffer::mKeepGoing = false;
+	std::cout << '\n'; // without this the command prompt may be at the end of the ^C char.
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Font Implementation.
@@ -1240,6 +1329,155 @@ void FreeTypeFont::RecomputeBlendTable()
 }
 
 #endif //#ifdef USE_FREETYPEFONTS
+
+#ifdef USE_X11_EMULATION
+/**
+ * @brief This codebase is expected to be used for a system not running X11. But to aid development there is an option to 'emulate' a frame buffer with an X11 window.
+ * 
+ */
+X11FrameBufferEmulation::X11FrameBufferEmulation():
+	mDisplay(NULL),
+	mWindow(0),
+	mRunMessagePump(false),
+	mFrameBuffer(NULL)
+{
+	memset(&mFixInfo,0,sizeof(mFixInfo));
+	memset(&mVarInfo,0,sizeof(mVarInfo));
+
+}
+
+X11FrameBufferEmulation::~X11FrameBufferEmulation()
+{
+	mRunMessagePump = false;
+
+	// Do this after we have set the message pump flag to false so the events generated will case XNextEvent to return.
+	XDestroyWindow(mDisplay,mWindow);
+	XCloseDisplay(mDisplay);
+
+	if( mMessagePump.joinable() )
+	{
+		mMessagePump.join();
+	}
+}
+
+bool X11FrameBufferEmulation::Open(bool pVerbose)
+{
+	// Before we do anything do this. So we can run message pump on it's own thread.
+	XInitThreads();
+
+	const struct fb_fix_screeninfo finfo =
+	{
+		"X11",
+		0,
+		X11_EMULATION_WIDTH * X11_EMULATION_HEIGHT * 4,
+		FB_TYPE_PACKED_PIXELS,
+		0,
+		FB_VISUAL_TRUECOLOR,
+		0,0,0,
+		X11_EMULATION_WIDTH*4,
+		0,0,0,0,
+		{0,0}
+	};
+	mFixInfo = finfo;
+
+	mVarInfo.xres = X11_EMULATION_WIDTH;
+	mVarInfo.yres = X11_EMULATION_HEIGHT;
+	mVarInfo.bits_per_pixel = 32;
+
+	mVarInfo.red.offset = 16;
+	mVarInfo.red.length = 8;
+
+	mVarInfo.green.offset = 8;
+	mVarInfo.green.length = 8;
+
+	mVarInfo.blue.offset = 0;
+	mVarInfo.blue.length = 8;
+	
+	mVarInfo.width = X11_EMULATION_WIDTH;
+	mVarInfo.height = X11_EMULATION_HEIGHT;
+
+	mDisplay = XOpenDisplay(NULL);
+	if( mDisplay == NULL )
+	{
+		std::cerr << "Failed to open X display.\n";
+		return false;
+	}
+		
+	mWindow = XCreateSimpleWindow(
+					mDisplay,
+					RootWindow(mDisplay, 0),
+					10, 10,
+					X11_EMULATION_WIDTH, X11_EMULATION_HEIGHT,
+					1,
+					BlackPixel(mDisplay, 0),
+					WhitePixel(mDisplay, 0));
+
+	XSelectInput(mDisplay, mWindow, ExposureMask | KeyPressMask | StructureNotifyMask );
+	XMapWindow(mDisplay, mWindow);
+
+
+	mFrameBuffer = (uint8_t*)malloc(mFixInfo.smem_len);
+	memset(mFrameBuffer,0,mFixInfo.smem_len);
+
+	Visual *visual=DefaultVisual(mDisplay, 0);
+	const int defDepth = DefaultDepth(mDisplay,DefaultScreen(mDisplay));
+	mFrameBufferImage = XCreateImage(
+							mDisplay,
+							visual,
+							defDepth,
+							ZPixmap,
+							0,
+							(char*)mFrameBuffer,
+							mVarInfo.width,
+							mVarInfo.height,
+							32,
+							0);
+
+	mRunMessagePump = true;
+	mMessagePump = std::thread([this]()
+	{
+		// So I can exit cleanly if the user uses the close window button.
+		Atom wmDeleteMessage = XInternAtom(mDisplay, "WM_DELETE_WINDOW", False);
+		XSetWMProtocols(mDisplay, mWindow, &wmDeleteMessage, 1);
+
+		XEvent e;
+		while( mRunMessagePump )
+		{
+			XNextEvent(mDisplay, &e);
+			switch( e.type )
+			{
+			case Expose:
+				break;
+
+			case ClientMessage:
+				// All of this is to stop and error when we try to use the display but has been disconnected.
+				// Snip from X11 docs.
+				// 	Clients that choose not to include WM_DELETE_WINDOW in the WM_PROTOCOLS property
+				// 	may be disconnected from the server if the user asks for one of the
+				//  client's top-level windows to be deleted.
+				// 
+				// My note, could have been avoided if we just had something like XDisplayStillValid(my display)
+				if (static_cast<Atom>(e.xclient.data.l[0]) == wmDeleteMessage)
+				{
+					mRunMessagePump = false;
+					FrameBuffer::SetKeepGoingFalse();
+				}
+				break;
+			}
+		};
+	});
+
+	return true;
+}
+
+void X11FrameBufferEmulation::Present()
+{
+	GC defGC = DefaultGC(mDisplay, DefaultScreen(mDisplay));
+	XPutImage(mDisplay, mWindow,defGC,mFrameBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
+}
+
+#endif //#ifdef USE_X11_EMULATION
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace FBIO
