@@ -4,14 +4,8 @@
 	{
 		"release":
 		{
-			"target":"executable",
-			"compiler":"gcc",
-			"linker":"gcc",
-			"archiver":"ar",
-			"output_path":"./bin/",
-			"output_name":"runme",
-			"standard":"c++11",
 			"optimisation":"3",
+            "debug_level": "0",
 			"include":
 			[
 				"/usr/include/",
@@ -21,6 +15,29 @@
 			[
 				"stdc++",
 				"pthread"
+			]
+		},
+		"x11":
+		{
+            "optimisation": "0",
+            "debug_level": "2",
+            "warnings_as_errors": false,
+            "enable_all_warnings": true,
+            "fatal_errors": false,
+			"include":
+			[
+				"/usr/include/",
+				"../../"
+			],
+			"libs":
+			[
+				"stdc++",
+				"pthread",
+				"X11"
+			],
+			"define": [
+				"DEBUG_BUILD",
+				"USE_X11_EMULATION"
 			]
 		}
 	},

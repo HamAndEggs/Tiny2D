@@ -2,26 +2,11 @@
 #include <iostream>
 #include <cstdlib>
 #include <time.h>
-#include <signal.h>
 #include <unistd.h>
 #include <cstdarg>
 #include <string.h>
 
 #include "framebuffer.h"
-
-bool KeepGoing = true;
-
-void static CtrlHandler(int SigNum)
-{
-	static int numTimesAskedToExit = 0;
-	std::cout << std::endl << "Asked to quit, please wait" << std::endl;
-	if( numTimesAskedToExit > 2 )
-	{
-		std::cout << "Asked to quit to many times, forcing exit in bad way" << std::endl;
-		exit(1);
-	}
-	KeepGoing = false;
-}
 
 int main(int argc, char *argv[])
 {
@@ -39,8 +24,6 @@ int main(int argc, char *argv[])
     {
 		return EXIT_FAILURE;
     }
-
-	signal (SIGINT,CtrlHandler);
 
 	srand(time(NULL));
 
@@ -66,10 +49,12 @@ int main(int argc, char *argv[])
 
     FTFont2.SetPenColour(255,255,255);
     FTFont2.SetBackgroundColour(0,0,0);
-    while( KeepGoing )
+    while( FB->GetKeepGoing() )
     {
         FB->DrawRectangle(500,350,1000,420,0,0,0,true);
         FTFont2.Printf(FB,500,400,"%d",rand());
+
+        FB->Present();
         sleep(1);
     }
 

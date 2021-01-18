@@ -1,6 +1,6 @@
 {
     "source_files": [
-        "truetype-font.cpp",
+        "X11.cpp",
 		"../../framebuffer.cpp"
     ],
     "configurations": {
@@ -19,7 +19,6 @@
             "fatal_errors": true,
             "include": [
                 "/usr/include/",
-                "/usr/include/freetype2",
                 "./",
 				"../../"
             ],
@@ -27,12 +26,12 @@
                 "m",
                 "stdc++",
                 "pthread",
-                "freetype"
+                "X11"
             ],
             "define": [
                 "NDEBUG",
                 "RELEASE_BUILD",
-                "USE_FREETYPEFONTS"
+                "USE_X11_EMULATION"
             ]
         },
         "debug": {
@@ -50,7 +49,6 @@
             "fatal_errors": false,
             "include": [
                 "/usr/include/",
-                "/usr/include/freetype2",
                 "./",
 				"../../"
             ],
@@ -58,39 +56,13 @@
                 "m",
                 "stdc++",
                 "pthread",
-                "freetype"
+                "X11"
             ],
             "define": [
                 "DEBUG_BUILD",
-                "USE_FREETYPEFONTS"
+                "USE_X11_EMULATION"
             ]
-        },
-		"x11":
-		{
-            "optimisation": "0",
-            "debug_level": "2",
-            "warnings_as_errors": false,
-            "enable_all_warnings": true,
-            "fatal_errors": false,
-			"include":
-			[
-				"/usr/include/",
-                "/usr/include/freetype2",
-				"../../"
-			],
-			"libs":
-			[
-				"stdc++",
-				"pthread",
-				"X11",
-                "freetype"
-			],
-			"define": [
-				"DEBUG_BUILD",
-				"USE_X11_EMULATION",
-                "USE_FREETYPEFONTS"
-			]
-		}
+        }
     },
     "version": "0.0.1"
 }

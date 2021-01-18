@@ -2,26 +2,11 @@
 #include <iostream>
 #include <cstdlib>
 #include <time.h>
-#include <signal.h>
 #include <unistd.h>
 #include <cstdarg>
 #include <string.h>
 
 #include "framebuffer.h"
-
-bool KeepGoing = true;
-
-void static CtrlHandler(int SigNum)
-{
-	static int numTimesAskedToExit = 0;
-	std::cout << std::endl << "Asked to quit, please wait" << std::endl;
-	if( numTimesAskedToExit > 2 )
-	{
-		std::cout << "Asked to quit to many times, forcing exit in bad way" << std::endl;
-		exit(1);
-	}
-	KeepGoing = false;
-}
 
 // Very simple button rendering class example. No logic.
 class Button
@@ -164,14 +149,16 @@ private:
 
 int main(int argc, char *argv[])
 {	
+    std::cout << "Application Version " << APP_VERSION << '\n';
+    std::cout << "Build date and time " << APP_BUILD_DATE_TIME << '\n';
+    std::cout << "Build date " << APP_BUILD_DATE << '\n';
+    std::cout << "Build time " << APP_BUILD_TIME << '\n';
+
 	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
 	if( !FB )
 		return 1;
 
-	signal (SIGINT,CtrlHandler);
-
 	srand(time(NULL));
-
 
 //	uint8_t col[8][3] = {{0,0,0},{255,0,0},{0,255,0},{0,0,255},{255,255,255},{255,0,255},{255,255,0},{0,255,255}};
 
@@ -186,7 +173,7 @@ int main(int argc, char *argv[])
 
 	int n = 149;
 	timespec SleepTime = {0,10000000};
-	while(KeepGoing)
+	while(FB->GetKeepGoing())
 	{
 		if( ((n)>>4) != ((n-1)>>4) )
 		{
@@ -202,6 +189,7 @@ int main(int argc, char *argv[])
 			GreenButton.Render(FB,TheFont,((n%150)&128) != 0);
 		}
 		
+		FB->Present();
 		n++;
 		nanosleep(&SleepTime,NULL);
 	};
