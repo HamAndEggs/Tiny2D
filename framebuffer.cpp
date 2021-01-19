@@ -76,7 +76,7 @@ struct X11FrameBufferEmulation
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // FrameBuffer Implementation.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-FrameBuffer* FrameBuffer::Open(bool pVerbose)
+FrameBuffer* FrameBuffer::Open(bool pDoubleBuffer,bool pVerbose)
 {
 	FrameBuffer* newFrameBuffer = NULL;
 
@@ -135,11 +135,17 @@ FrameBuffer* FrameBuffer::Open(bool pVerbose)
 					std::cout << "Blue bitfield: offset " << vinfo.blue.offset << " length " << vinfo.blue.length << " msb_right " << vinfo.blue.msb_right << '\n';
 				}
 
-				uint8_t* ScreenRam = (uint8_t*)mmap(0,finfo.smem_len,PROT_READ | PROT_WRITE,MAP_SHARED,File, 0);
-				assert(ScreenRam);
-				if( ScreenRam != NULL )
+				uint8_t* DisplayRam = (uint8_t*)mmap(0,finfo.smem_len,PROT_READ | PROT_WRITE,MAP_SHARED,File, 0);
+				assert(DisplayRam);
+				if( DisplayRam != NULL )
 				{
-					newFrameBuffer = new FrameBuffer(File,ScreenRam,finfo,vinfo,pVerbose);
+					uint8_t* FrameRam = DisplayRam;
+					if( pDoubleBuffer )
+					{
+						FrameRam = new uint8_t[finfo.smem_len];
+					}
+
+					newFrameBuffer = new FrameBuffer(File,FrameRam,DisplayRam,finfo,vinfo,pVerbose);					
 				}
 
 			}
@@ -159,7 +165,7 @@ FrameBuffer* FrameBuffer::Open(bool pVerbose)
 	return newFrameBuffer;
 }
 
-FrameBuffer::FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose):
+FrameBuffer::FrameBuffer(int pFile,uint8_t* pFrameBuffer,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose):
 	mWidth(pScreenInfo.xres),
 	mHeight(pScreenInfo.yres),
 	mStride(pFixInfo.line_length),
@@ -168,7 +174,8 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninf
 	mFrameBufferSize(pFixInfo.smem_len),
 	mVerbose(pVerbose),
 	mVariableScreenInfo(pScreenInfo),
-	mFrameBuffer(pFrameBuffer)
+	mFrameBuffer(pFrameBuffer),
+	mDisplayBuffer(pDisplayBuffer)
 {
 	FrameBuffer::mKeepGoing = true;
 	// Lets hook ctrl + c.
@@ -185,7 +192,12 @@ FrameBuffer::~FrameBuffer()
 		std::cout << "Freeing frame buffer resources, frame buffer object will be invalid and not unusable.\n";
 	}
 
-	munmap((void*)mFrameBuffer,mFrameBufferSize);
+	if( mFrameBuffer != mDisplayBuffer )
+	{
+		delete []mFrameBuffer;
+	}
+
+	munmap((void*)mDisplayBuffer,mFrameBufferSize);
 	close(mFrameBufferFile);
 #endif //#ifdef USE_X11_EMULATION
 }
@@ -194,6 +206,11 @@ void FrameBuffer::Present()
 {
 #ifdef USE_X11_EMULATION
 	mX11->Present();
+#else
+	if( mFrameBuffer != mDisplayBuffer )
+	{
+		memcpy(mDisplayBuffer,mFrameBuffer,mFrameBufferSize);
+	}
 #endif //#ifdef USE_X11_EMULATION
 }
 

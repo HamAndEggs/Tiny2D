@@ -31,28 +31,27 @@ int main(int argc, char *argv[])
     const uint8_t BG_G = 0;
     const uint8_t BG_B = 0;
 
-	FB->ClearScreen(BG_R,BG_G,BG_B);
 
-    FBIO::FreeTypeFont FTFont("./Blenda Script.otf",80,true);
-    FTFont.SetPenColour(0,0,0);
+    FBIO::FreeTypeFont FTFont("./Blenda Script.otf",60,true);
     FTFont.SetBackgroundColour(BG_R,BG_G,BG_B);
-    FTFont.Printf(FB,0,80,"Blenda Script 0123456789 :)");
-
     FTFont.SetPenColour(0,255,255);
-    FTFont.Print(FB,0,180,"Spacing Test iAlBjXvIoiP X l");
 
-    FBIO::FreeTypeFont FTFont2("./MachineScript.ttf",50,true);
-    FTFont2.SetPenColour(0,255,0);
+    FBIO::FreeTypeFont FTFont2("./MachineScript.ttf",45,true);
     FTFont2.SetBackgroundColour(BG_R,BG_G,BG_B);
-    FTFont2.Print(FB,10,300,"Test Number 0123456789");
-    FTFont2.Print(FB,10,400,"Random Number");
+    FTFont2.SetPenColour(0,255,0);
 
-    FTFont2.SetPenColour(255,255,255);
-    FTFont2.SetBackgroundColour(0,0,0);
     while( FB->GetKeepGoing() )
     {
-        FB->DrawRectangle(500,350,1000,420,0,0,0,true);
-        FTFont2.Printf(FB,500,400,"%d",rand());
+	    FB->ClearScreen(BG_R,BG_G,BG_B);
+
+        FTFont.SetPenColour(0,0,0);
+        FTFont.Printf(FB,0,80,"Blenda Script 0123456789 :)");
+
+        FTFont.SetPenColour(0,255,255);
+        FTFont.Print(FB,0,180,"Spacing Test iAlBjXvIoiP X l");
+
+        FTFont2.Print(FB,10,300,"Test Number 0123456789");
+        FTFont2.Printf(FB,10,400,"Random Number %d",rand());
 
         FB->Present();
         sleep(1);

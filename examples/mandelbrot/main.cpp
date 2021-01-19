@@ -107,7 +107,7 @@ void Render(float pZoom)
 
 int main(int argc, char *argv[])
 {	
-	FB = FBIO::FrameBuffer::Open(true);
+	FB = FBIO::FrameBuffer::Open(false,true);
 	if( !FB )
 		return 1;
 

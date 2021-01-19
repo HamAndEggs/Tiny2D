@@ -63,11 +63,13 @@ public:
 	 * @brief Creates and opens a FrameBuffer object.
 	 * If the OS does not support the frame buffer driver or there is some other error,
 	 * this function will return NULL.
+	 * If enabled, double buffering will reduce the amount of tearing when redrawing the display at the cost of a little speed.
 	 * 
+	 * @param pDoubleBuffer If true all drawing will be offscreen and you will need to call Present to see the results.
 	 * @param pVerbose get debugging information as the object is created.
 	 * @return FrameBuffer* 
 	 */
-	static FrameBuffer* Open(bool pVerbose = false);
+	static FrameBuffer* Open(bool pDoubleBuffer = false,bool pVerbose = false);
 
 	~FrameBuffer();
 
@@ -179,7 +181,7 @@ public:
 	void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)const;
 
 private:
-	FrameBuffer(int pFile,uint8_t* pFrameBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
+	FrameBuffer(int pFile,uint8_t* pFrameBuffer,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
 
 	/*
 		Draws an arbitrary line.
@@ -202,7 +204,13 @@ private:
 	const int mFrameBufferSize;
 	const bool mVerbose;
 	const struct fb_var_screeninfo mVariableScreenInfo;
+
+	/**
+	 * @brief If double buffer is on then mFrameBuffer is the buffer that is rendered too and display buffer is what is on view.
+	 * If no double buffering, these point to the same memory.
+	 */
 	uint8_t* mFrameBuffer;
+	uint8_t* mDisplayBuffer;
 
 	/**
 	 * @brief set to false by the ctrl + c handler.
