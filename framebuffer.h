@@ -271,7 +271,7 @@ private:
 class FreeTypeFont
 {
 public:
-	FreeTypeFont(const char* pFontName,int pPixelHeight = 40,bool pVerbose = false);
+	FreeTypeFont(const std::string& pFontName,int pPixelHeight = 40,bool pVerbose = false);
 	~FreeTypeFont();
 
 	bool GetOK()const{return mOK;}

@@ -84,7 +84,7 @@ FrameBuffer* FrameBuffer::Open(bool pDoubleBuffer,bool pVerbose)
 	X11FrameBufferEmulation* newX11 = new X11FrameBufferEmulation();
 	if( newX11->Open(pVerbose) )
 	{
-		newFrameBuffer = new FrameBuffer(0,newX11->mFrameBuffer,newX11->mFixInfo,newX11->mVarInfo,pVerbose);
+		newFrameBuffer = new FrameBuffer(0,newX11->mFrameBuffer,newX11->mFrameBuffer,newX11->mFixInfo,newX11->mVarInfo,pVerbose);
 		newFrameBuffer->mX11 = newX11;
 	}
 	else
@@ -1106,7 +1106,7 @@ void PixelFont::SetPixelSize(int pPixelSize)
 FT_Library FreeTypeFont::mFreetype = NULL;
 int FreeTypeFont::mFreetypeRefCount = 0;
 
-FreeTypeFont::FreeTypeFont(const char* pFontName,int pPixelHeight,bool pVerbose):
+FreeTypeFont::FreeTypeFont(const std::string& pFontName,int pPixelHeight,bool pVerbose):
 	mVerbose(pVerbose),
 	mFace(NULL),
 	mOK(false)
@@ -1137,7 +1137,7 @@ FreeTypeFont::FreeTypeFont(const char* pFontName,int pPixelHeight,bool pVerbose)
 		std::cout << "mFreetypeRefCount = " << mFreetypeRefCount << '\n';
 	}	
 
-	if( FT_New_Face(mFreetype,pFontName,0,&mFace) == 0 )
+	if( FT_New_Face(mFreetype,pFontName.c_str(),0,&mFace) == 0 )
 	{
 		if( FT_Set_Pixel_Sizes(mFace,0,pPixelHeight) == 0 )
 		{
