@@ -1,0 +1,24 @@
+{
+    "source_files": [
+        "blank-screen.cpp",
+   		"../../framebuffer.cpp"
+    ],
+    "configurations": {
+        "release": {
+            "include": [
+                "/usr/include/",
+				"../../"
+            ],
+            "libs": [
+                "m",
+                "stdc++",
+                "pthread"
+            ],
+            "define": [
+                "NDEBUG",
+                "RELEASE_BUILD"
+            ]
+        }
+    },
+    "version": "0.0.1"
+}
