@@ -50,6 +50,14 @@
 namespace FBIO{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+typedef uint32_t PixelColour;
+
+#define MAKE_PIXEL_COLOUR(R__,G__,B__)	(((uint32_t)R__<<16)|((uint32_t)G__<<8)|((uint32_t)B__))
+
+#define PIXEL_COLOUR_RED(COLOUR__)		( (uint8_t)((COLOUR__&0x00ff0000)>>16) )
+#define PIXEL_COLOUR_GREEN(COLOUR__)	( (uint8_t)((COLOUR__&0x0000ff00)>>8) )
+#define PIXEL_COLOUR_BLUE(COLOUR__)		( (uint8_t)(COLOUR__&0x000000ff) )
+
 struct X11FrameBufferEmulation;
 /**
  * @brief Represents the linux frame buffer display.
@@ -122,10 +130,37 @@ public:
 	 */
 	void WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
-	/*
-		Clears the entire screen.
-	*/
+	/**
+	 * @brief Writes a single pixel with the passed red, green and blue values. 0 -> 255, 0 being off 255 being full on.
+	 * The pixel will not be written if it's outside the frame buffers bounds.
+	 * 
+	 * @param pX 
+	 * @param pY 
+	 * @param pColour 
+	 */
+	void WritePixel(int pX,int pY,PixelColour pColour)
+	{
+		WritePixel(pX,pY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+	}
+	
+	/**
+	 * @brief Clears the entire screen.
+	 * 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 */
 	void ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+
+	/**
+	 * @brief Clears the entire screen.
+	 * 
+	 * @param pColour 
+	 */
+	void ClearScreen(PixelColour pColour)
+	{
+		ClearScreen(PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+	}
 
 	/* 
 		Expects source to be 24bit, three 8 bit bytes in R G B order.
@@ -170,15 +205,62 @@ public:
 	*/
 	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false);
 
+	/**
+	 * @brief Convert RGB to HSV
+	 * Very handy for creating colour palettes.
+	 * See:- (thanks David H)
+	 * 	https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+	 * 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 * @param rH 
+	 * @param rS 
+	 * @param rV 
+	 */
+	static void RGB2HSV(uint8_t pRed,uint8_t pGreen, uint8_t pBlue,float& rH,float& rS, float& rV);
 
-	/*
-		Converts from HSV to RGB.
-		Very handy for creating colour palettes.
-		See:- (thanks David H)
-			https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+	/**
+	 * @brief Convert HSV to RGB
+	 * Very handy for creating colour palettes.
+	 * See:- (thanks David H)
+	 * 	https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+	 * 
+	 * @param H 
+	 * @param S 
+	 * @param V 
+	 * @param rRed 
+	 * @param rGreen 
+	 * @param rBlue 
+	 */
+	static void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue);
 
-	*/
-	void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)const;
+	/**
+	 * @brief This uses RGB space as input and output but does the belending in the HSV space.
+	 * This creates the best tweening of colours for palettes and graduations.
+	 * 
+	 * @param pFromRed 
+	 * @param pFromGreen 
+	 * @param pFromBlue 
+	 * @param pToRed 
+	 * @param pToGreen 
+	 * @param pToBlue 
+	 * @param rBlendTable 
+	 */
+	static void TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
+
+	/**
+	 * @brief By using the RGB space this creates an accurate reproduction of the 'alpha blend' operation.
+	 * 
+	 * @param pFromRed 
+	 * @param pFromGreen 
+	 * @param pFromBlue 
+	 * @param pToRed 
+	 * @param pToGreen 
+	 * @param pToBlue 
+	 * @param rBlendTable 
+	 */
+	static void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
 
 private:
 	FrameBuffer(int pFile,uint8_t* pFrameBuffer,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);

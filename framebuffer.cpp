@@ -618,7 +618,55 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 	}
 }
 
-void FrameBuffer::HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)const
+void FrameBuffer::RGB2HSV(uint8_t pRed,uint8_t pGreen, uint8_t pBlue,float& rH,float& rS, float& rV)
+{
+    float min, max, delta;
+
+	const float red = (float)pRed / 255.0f;
+	const float green = (float)pGreen / 255.0f;
+	const float blue = (float)pBlue / 255.0f;
+
+    min = red < green ? red : green;
+    min = min  < blue ? min  : blue;
+
+    max = red > green ? red : green;
+    max = max  > blue ? max  : blue;
+
+    rV = max;                                // v
+    delta = max - min;
+    if (delta < 0.00001)
+    {
+        rS = 0;
+        rH = 0; // undefined, maybe nan?
+        return;
+    }
+    if( max > 0.0 )
+	{ // NOTE: if Max is == 0, this divide would cause a crash
+        rS = (delta / max);                  // s
+    }
+	else
+	{
+        // if max is 0, then r = g = b = 0              
+        // s = 0, h is undefined
+        rS = 0.0;
+        rH = 0.0;                            // its now undefined
+        return;
+    }
+    if( red >= max )                           // > is bogus, just keeps compiler happy
+        rH = ( green - blue ) / delta;        // between yellow & magenta
+    else
+    if( green >= max )
+        rH = 2.0 + ( blue - red ) / delta;  // between cyan & yellow
+    else
+        rH = 4.0 + ( red - green ) / delta;  // between magenta & cyan
+
+    rH *= 60.0;                              // degrees
+
+    if( rH < 0.0 )
+        rH += 360.0;
+}
+
+void FrameBuffer::HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)
 {
 	float R;
 	float G;
@@ -688,6 +736,40 @@ void FrameBuffer::HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen
 	rRed = (uint8_t)(R * 255.0f);
 	rGreen = (uint8_t)(G * 255.0f);
 	rBlue = (uint8_t)(B * 255.0f);
+}
+
+void FrameBuffer::TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256])
+{
+	float fromH,fromS,fromV;
+	float toH,toS,toV;
+
+	RGB2HSV(pFromRed,pFromGreen,pFromBlue,fromH,fromS,fromV);
+	RGB2HSV(pToRed,pToGreen,pToBlue,toH,toS,toV);
+
+	float a = 0.0f;
+	for( int n = 0 ; n < 256 ; n++, a += (1.0f/255.0f) )
+	{
+		const float H = (fromH*a) + ((1.0f-a) * toH);
+		const float S = (fromS*a) + ((1.0f-a) * toS);
+		const float V = (fromV*a) + ((1.0f-a) * toV);
+
+		uint8_t r,g,b;
+
+		HSV2RGB(H,S,V,r,g,b);
+
+		rBlendTable[n] = MAKE_PIXEL_COLOUR(r,g,b);
+	}
+}
+
+void FrameBuffer::TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256])
+{
+	for( uint32_t n = 0 ; n < 256 ; n++ )
+	{
+		const uint32_t r = ( (pFromRed   * n) + (pToRed   * (255 - n)) ) / 255;
+		const uint32_t g = ( (pFromGreen * n) + (pToGreen * (255 - n)) ) / 255;
+		const uint32_t b = ( (pFromBlue  * n) + (pToBlue  * (255 - n)) ) / 255;
+		rBlendTable[n] = MAKE_PIXEL_COLOUR(r,g,b);
+	}
 }
 
 sighandler_t FrameBuffer::mUsersSignalAction = NULL;
@@ -1328,12 +1410,16 @@ void FreeTypeFont::SetBackgroundColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue
 
 void FreeTypeFont::RecomputeBlendTable()
 {
+	uint32_t blendTable[256];
+
+	FrameBuffer::TweenColoursRGB(mPenColour.r,mPenColour.g,mPenColour.b,mBackgroundColour.r,mBackgroundColour.g,mBackgroundColour.b,blendTable);
+
+	// Unpack to speed up rendering.
 	for( uint32_t p = 0 ; p < 256 ; p++ )
 	{
-		const uint32_t np = 255 - p;
-		mBlended[p].r = (uint8_t)( (((uint32_t)mPenColour.r * p)  + ((uint32_t)mBackgroundColour.r * np)) / 255 );
-		mBlended[p].g = (uint8_t)( (((uint32_t)mPenColour.g * p)  + ((uint32_t)mBackgroundColour.g * np)) / 255 );
-		mBlended[p].b = (uint8_t)( (((uint32_t)mPenColour.b * p)  + ((uint32_t)mBackgroundColour.b * np)) / 255 );		
+		mBlended[p].r = PIXEL_COLOUR_RED(blendTable[p]);
+		mBlended[p].g = PIXEL_COLOUR_GREEN(blendTable[p]);
+		mBlended[p].b = PIXEL_COLOUR_BLUE(blendTable[p]);
 	}
 }
 
