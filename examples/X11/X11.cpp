@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 
 	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
 	if( !FB )
-		return 1;
+		return EXIT_FAILURE;
 
 
 	FB->ClearScreen(150,150,150);

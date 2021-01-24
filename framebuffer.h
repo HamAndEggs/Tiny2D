@@ -178,32 +178,160 @@ public:
 	*/
 	void BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride);
 
-	/*
-		Draws a horizontal line.
-	*/
+	/**
+	 * @brief Draws a horizontal line.
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToX 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 */
 	void DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
-	/*
-		Draws a vertical line.
-	*/
+	/**
+	 * @brief  Draws a horizontal line.
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToX 
+	 * @param pColour 
+	 */
+	void DrawLineH(int pFromX,int pFromY,int pToX,PixelColour pColour)
+	{
+		DrawLineH(pFromX,pFromY,pToX,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+	}
+
+	/**
+	 * @brief Draws a vertical line.
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToY 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 */
 	void DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
-	/*
-		Draws an arbitrary line.
-		Will take a short cut if the line is horizontal or vertical.
-	*/
+	/**
+	 * @brief Draws a vertical line.
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToY 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 */
+	void DrawLineV(int pFromX,int pFromY,int pToY,PixelColour pColour)
+	{
+		DrawLineH(pFromX,pFromY,pToY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+	}
+
+	/**
+	 * @brief Draws an arbitrary line.
+	 * Will take a short cut if the line is horizontal or vertical.
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToX 
+	 * @param pToY 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 */
 	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
-	/*
-		Draws a circle using the Midpoint algorithm.
-		https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
-	*/
+	/**
+	 * @brief Draws an arbitrary line.
+	 * Will take a short cut if the line is horizontal or vertical.
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToX 
+	 * @param pToY 
+	 * @param pColour 
+	 */
+	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,PixelColour pColour)
+	{
+		DrawLine(pFromX,pFromY,pToX,pToY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+	}
+
+	/**
+	 * @brief Draws a circle using the Midpoint algorithm.
+	 * https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
+	 * 
+	 * @param pCenterX 
+	 * @param pCenterY 
+	 * @param pRadius 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 * @param pFilled 
+	 */
 	void DrawCircle(int pCenterX,int pCenterY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false);
 
-	/*
-		Draws a rectangle with the passed in RGB values either filled or not.
-	*/
+	/**
+	 * @brief Draws a circle using the Midpoint algorithm.
+	 * https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
+	 * 
+	 * @param pCenterX 
+	 * @param pCenterY 
+	 * @param pRadius 
+	 * @param pColour 
+	 * @param pFilled 
+	 */
+	void DrawCircle(int pCenterX,int pCenterY,int pRadius,PixelColour pColour,bool pFilled = false)
+	{
+		DrawCircle(pCenterX,pCenterY,pRadius,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour),pFilled);
+	}
+
+	/**
+	 * @brief Draws a rectangle with the passed in RGB values either filled or not.
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToX 
+	 * @param pToY 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 * @param pFilled 
+	 */
 	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false);
+
+	/**
+	 * @brief Draws a rectangle with the passed in RGB values either filled or not.
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToX 
+	 * @param pToY 
+	 * @param pColour 
+	 * @param pFilled 
+	 */
+	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,PixelColour pColour,bool pFilled = false)
+	{
+		DrawRectangle(pFromX,pFromY,pToX,pToY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour),pFilled);
+	}
+
+	/**
+	 * @brief Draws a gradient using HSV colour space. Don't expect high speed, is doing a lot of math!
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToX 
+	 * @param pToY 
+	 * @param pFormRed 
+	 * @param pFormGreen 
+	 * @param pFormBlue 
+	 * @param pToRed 
+	 * @param pToGreen 
+	 * @param pToBlue 
+	 */
+	void DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue);
 
 	/**
 	 * @brief Convert RGB to HSV
@@ -335,14 +463,25 @@ public:
 	
 	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 	void SetPixelSize(int pPixelSize);
+
+	/**
+	 * @brief Turns on pixel bordering, renders one pixel size boarder set to the passed in colour.
+	 * Helps text to stand out. Will cost more to render!
+	 * 
+	 * @param pOn 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 */
+	void SetBorder(bool pOn,uint8_t pRed = 0,uint8_t pGreen = 0,uint8_t pBlue = 0);
 private:
 
 	int mPixelSize;
-
+	bool mBorderOn;
 	struct
 	{
 		uint8_t r,g,b;
-	}mPenColour;
+	}mPenColour,mBorderColour;
 };
 
 #ifdef USE_FREETYPEFONTS

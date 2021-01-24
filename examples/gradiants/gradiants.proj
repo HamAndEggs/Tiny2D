@@ -1,0 +1,44 @@
+{
+    "source_files": [
+        "gradiants.cpp",
+   		"../../framebuffer.cpp"
+    ],
+    "configurations": {
+        "release": {
+            "include": [
+                "/usr/include/",
+				"../../"
+            ],
+            "libs": [
+                "m",
+                "stdc++",
+                "pthread"
+            ]
+        },
+        "x11":
+		{
+            "optimisation": "0",
+            "debug_level": "2",
+            "warnings_as_errors": false,
+            "enable_all_warnings": true,
+            "fatal_errors": false,
+			"include":
+			[
+				"/usr/include/",
+				"../../"
+			],
+			"libs":
+			[
+                "m",
+				"stdc++",
+				"pthread",
+				"X11"
+			],
+			"define": [
+				"DEBUG_BUILD",
+				"USE_X11_EMULATION"
+			]
+		}
+    },
+    "version": "0.0.1"
+}
