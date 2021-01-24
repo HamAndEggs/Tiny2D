@@ -353,7 +353,7 @@ void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t 
 		const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
 
 		uint16_t *dest = (uint16_t*)(mFrameBuffer + (pFromY*mStride) );
-		for( int x = pFromX ; x < pToX && x < mWidth ; x++ )
+		for( int x = pFromX ; x <= pToX && x < mWidth ; x++ )
 		{
 			assert( (dest+x) < ((uint16_t*)(mFrameBuffer + mFrameBufferSize)) );
 			dest[x] = pixel;
@@ -363,7 +363,7 @@ void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t 
 	{
 		assert( mPixelSize == 3 || mPixelSize == 4 );
 		uint8_t *dest = mFrameBuffer + (pFromX*mPixelSize) + (pFromY*mStride);
-		for( int x = pFromX ; x < pToX && x < mWidth ; x++, dest += mPixelSize )
+		for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += mPixelSize )
 		{
 			dest[ (RedShift/8) ] = pRed;
 			dest[ (GreenShift/8) ] = pGreen;
@@ -399,7 +399,7 @@ void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t 
 
 		uint16_t *dest = (uint16_t*)mFrameBuffer;
 		dest += pFromX + (pFromY*mWidth);
-		for( int y = pFromY ; y < pToY && y < mHeight ; y++, dest += mWidth )
+		for( int y = pFromY ; y <= pToY && y < mHeight ; y++, dest += mWidth )
 		{
 			*dest = pixel;
 		}
@@ -408,7 +408,7 @@ void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t 
 	{
 		assert( mPixelSize == 3 || mPixelSize == 4 );
 		uint8_t *dest = mFrameBuffer + (pFromX*mPixelSize) + (pFromY*mStride);
-		for( int y = pFromY ; y < pToY && y < mHeight ; y++, dest += mStride )
+		for( int y = pFromY ; y <= pToY && y < mHeight ; y++, dest += mStride )
 		{
 			dest[ (RedShift/8) ] = pRed;
 			dest[ (GreenShift/8) ] = pGreen;
@@ -581,11 +581,11 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 			const uint16_t pixel = (red << RedShift) | (green << GreenShift) | (blue << BlueShift);
 
 			// Don't need to check for y >= mHeight as above we already clamped it.
-			for( int y = pFromY ; y < pToY ; y++ )
+			for( int y = pFromY ; y <= pToY ; y++ )
 			{
 				uint16_t *dest = (uint16_t*)(mFrameBuffer + (y*mStride) );
 				// Don't need to check for x >= mWidth as above we already clamped it.
-				for( int x = pFromX ; x < pToX ; x++ )
+				for( int x = pFromX ; x <= pToX ; x++ )
 				{
 					assert( (dest+x) < ((uint16_t*)(mFrameBuffer + mFrameBufferSize)) );
 					dest[x] = pixel;
@@ -595,10 +595,10 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 		else
 		{
 			assert( mPixelSize == 3 || mPixelSize == 4 );
-			for( int y = pFromY ; y < pToY ; y++ )
+			for( int y = pFromY ; y <= pToY ; y++ )
 			{
 				uint8_t *dest = mFrameBuffer + (pFromX*mPixelSize) + (y*mStride);
-				for( int x = pFromX ; x < pToX && x < mWidth ; x++, dest += mPixelSize )
+				for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += mPixelSize )
 				{
 					dest[ (RedShift/8) ] = pRed;
 					dest[ (GreenShift/8) ] = pGreen;
@@ -617,6 +617,53 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 		DrawLineV(pToX,pFromY,pToY,pRed,pGreen,pBlue);
 	}
 }
+
+void FrameBuffer::DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue)
+{
+	// Do some early outs.
+	if( pFromY == pToY || pFromX == pToX )
+		return;
+
+	// Make sure X is in the right direction.
+	if( pFromX > pToX )
+	{
+		std::swap(pFromX,pToX);
+	}
+
+	float fromH,fromS,fromV;
+	float toH,toS,toV;
+
+	RGB2HSV(pFormRed,pFormGreen,pFormBlue,fromH,fromS,fromV);
+	RGB2HSV(pToRed,pToGreen,pToBlue,toH,toS,toV);
+
+	float a,s;
+
+	// See if we need to flip the direction of the gradient if they are drawing up instead of down.
+	if( pFromY > pToY )
+	{
+		std::swap(pFromY,pToY);
+		a = 1.0f;
+		s = -1.0f / (float)(pToY - pFromY);
+	}
+	else
+	{
+		a = 0.0f;
+		s = 1.0f / (float)(pToY - pFromY);
+	}
+
+	for( int y = pFromY ; y <= pToY ; y++, a += s )
+	{
+		const float H = ((1.0f-a)*fromH) + (a * toH);
+		const float S = ((1.0f-a)*fromS) + (a * toS);
+		const float V = ((1.0f-a)*fromV) + (a * toV);
+
+		uint8_t r,g,b;
+		HSV2RGB(H,S,V,r,g,b);
+
+		DrawLineH(pFromX,y,pToX,r,g,b);
+	}
+}
+
 
 void FrameBuffer::RGB2HSV(uint8_t pRed,uint8_t pGreen, uint8_t pBlue,float& rH,float& rS, float& rV)
 {
@@ -749,9 +796,9 @@ void FrameBuffer::TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t p
 	float a = 0.0f;
 	for( int n = 0 ; n < 256 ; n++, a += (1.0f/255.0f) )
 	{
-		const float H = (fromH*a) + ((1.0f-a) * toH);
-		const float S = (fromS*a) + ((1.0f-a) * toS);
-		const float V = (fromV*a) + ((1.0f-a) * toV);
+		const float H = ((1.0f-a)*fromH) + (a * toH);
+		const float S = ((1.0f-a)*fromS) + (a * toS);
+		const float V = ((1.0f-a)*fromV) + (a * toV);
 
 		uint8_t r,g,b;
 
@@ -765,9 +812,9 @@ void FrameBuffer::TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t p
 {
 	for( uint32_t n = 0 ; n < 256 ; n++ )
 	{
-		const uint32_t r = ( (pFromRed   * n) + (pToRed   * (255 - n)) ) / 255;
-		const uint32_t g = ( (pFromGreen * n) + (pToGreen * (255 - n)) ) / 255;
-		const uint32_t b = ( (pFromBlue  * n) + (pToBlue  * (255 - n)) ) / 255;
+		const uint32_t r = ( (pFromRed   * (255 - n)) + (pToRed   * n) ) / 255;
+		const uint32_t g = ( (pFromGreen * (255 - n)) + (pToGreen * n) ) / 255;
+		const uint32_t b = ( (pFromBlue  * (255 - n)) + (pToBlue  * n) ) / 255;
 		rBlendTable[n] = MAKE_PIXEL_COLOUR(r,g,b);
 	}
 }
@@ -1077,7 +1124,7 @@ static const uint8_t font8x13[] =
     0x3a, 0x02, 0x42, 0x3c
 };
 
-PixelFont::PixelFont(int pPixelSize):mPixelSize(1)
+PixelFont::PixelFont(int pPixelSize):mPixelSize(1),mBorderOn(false)
 {
 	SetPenColour(255,255,255);
 	SetPixelSize(pPixelSize);
@@ -1089,9 +1136,30 @@ PixelFont::~PixelFont()
 
 void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const
 {
-	const uint8_t* d = font8x13 + pChar * 13;
+	const uint8_t* charBits = font8x13 + pChar * 13;
 	if( mPixelSize == 1 )
 	{
+		if( mBorderOn )
+		{
+			const uint8_t* d = charBits;
+			for(int y = 0 ; y < 13 ; y++ , d++)
+			{
+				int x = pX;
+				const uint8_t bits = *d;
+				if( bits != 0 )
+				{
+					for( int bit = 7 ; bit > -1 ; bit-- , x++ )
+					{
+						if( bits&(1<<bit) )
+						{
+							pDest->DrawRectangle(x-1,pY + y - 1,x+1,pY + y + 1,mBorderColour.r,mBorderColour.g,mBorderColour.b,true);
+						}
+					}
+				}
+			}
+		}
+
+		const uint8_t* d = charBits;
 		for(int y = 0 ; y < 13 ; y++ , d++)
 		{
 			int x = pX;
@@ -1110,6 +1178,28 @@ void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t p
 	}
 	else
 	{
+		if( mBorderOn )
+		{
+			const uint8_t* d = charBits;
+			int by = pY;
+			for(int y = 0 ; y < 13 ; y++ , d++ , by += mPixelSize )
+			{
+				int x = pX;
+				const uint8_t bits = *d;
+				if( bits != 0 )
+				{
+					for( int bit = 7 ; bit > -1 ; bit-- , x+=mPixelSize )
+					{
+						if( bits&(1<<bit) )
+						{
+							pDest->DrawRectangle(x-1,by-1,x+mPixelSize+1,by+mPixelSize+1,mBorderColour.r,mBorderColour.g,mBorderColour.b,true);
+						}
+					}
+				}
+			}
+		}
+
+		const uint8_t* d = charBits;
 		for(int y = 0 ; y < 13 ; y++ , d++ , pY += mPixelSize )
 		{
 			int x = pX;
@@ -1120,8 +1210,7 @@ void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t p
 				{
 					if( bits&(1<<bit) )
 					{
-						for(int i = 0 ; i < mPixelSize ; i++ )
-							pDest->DrawLineH(x,pY+i,x+mPixelSize,pGreen,pGreen,pBlue);
+						pDest->DrawRectangle(x,pY,x+mPixelSize,pY+mPixelSize,pGreen,pGreen,pBlue,true);
 					}
 				}
 			}
@@ -1178,6 +1267,15 @@ void PixelFont::SetPixelSize(int pPixelSize)
 	if( pPixelSize > 0 )
 		mPixelSize = pPixelSize;
 }
+
+void PixelFont::SetBorder(bool pOn,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	mBorderOn = pOn;
+	mBorderColour.r = pRed;
+	mBorderColour.g = pGreen;
+	mBorderColour.b = pBlue;
+}
+
 
 #ifdef USE_FREETYPEFONTS
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
