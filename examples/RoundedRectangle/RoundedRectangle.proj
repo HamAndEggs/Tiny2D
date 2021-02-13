@@ -1,0 +1,54 @@
+{
+    "source_files": [
+        "RoundedRectangle.cpp",
+        "../../framebuffer.cpp"
+    ],
+    "configurations": {
+        "release": {
+            "optimisation": "2",
+            "debug_level": "0",
+            "warnings_as_errors": true,
+            "enable_all_warnings": true,
+            "fatal_errors": true,
+            "include": [
+                "/usr/include/",
+                "./"
+            ],
+            "libs": [
+                "m",
+                "stdc++",
+                "pthread",
+                "m"
+            ],
+            "define": [
+                "NDEBUG",
+                "RELEASE_BUILD"
+            ]
+        },
+        "x11":
+		{
+            "optimisation": "0",
+            "debug_level": "2",
+            "warnings_as_errors": false,
+            "enable_all_warnings": true,
+            "fatal_errors": false,
+			"include":
+			[
+				"/usr/include/",
+				"../../"
+			],
+			"libs":
+			[
+				"stdc++",
+				"pthread",
+				"X11",
+                "m"
+			],
+			"define": [
+				"DEBUG_BUILD",
+				"USE_X11_EMULATION"
+			]
+		}
+    },
+    "version": "0.0.1"
+}

@@ -303,7 +303,7 @@ public:
 	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false);
 
 	/**
-	 * @brief Draws a rectangle with the passed in RGB values either filled or not.
+	 * @brief Draws a rectangle with the passed in pixel colour either filled or not.
 	 * 
 	 * @param pFromX 
 	 * @param pFromY 
@@ -315,6 +315,37 @@ public:
 	void DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,PixelColour pColour,bool pFilled = false)
 	{
 		DrawRectangle(pFromX,pFromY,pToX,pToY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour),pFilled);
+	}
+
+	/**
+	 * @brief Draws a rectangle with rounder corners in the passed in RGB values either filled or not.
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToX 
+	 * @param pToY 
+	 * @param pRadius 
+	 * @param pRed 
+	 * @param pGreen 
+	 * @param pBlue 
+	 * @param pFilled 
+	 */
+	void DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled = false);
+
+	/**
+	 * @brief Draws a rectangle with rounder corners in the passed in pixel colour either filled or not.
+	 * 
+	 * @param pFromX 
+	 * @param pFromY 
+	 * @param pToX 
+	 * @param pToY 
+	 * @param pRadius 
+	 * @param pColour 
+	 * @param pFilled 
+	 */
+	void DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,PixelColour pColour,bool pFilled = false)
+	{
+		DrawRoundedRectangle(pFromX,pFromY,pToX,pToY,pRadius,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour),pFilled);
 	}
 
 	/**

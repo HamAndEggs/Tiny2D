@@ -618,6 +618,93 @@ void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t 
 	}
 }
 
+void FrameBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
+{
+	if( pRadius < 1 )
+	{
+		DrawRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,pFilled);
+		return;
+	}
+
+	if( pRadius > pToX - pFromX && pRadius > pToY - pFromY )
+	{
+		pRadius = (pToX - pFromX) / 2;
+		DrawCircle( (pFromX + pToX) / 2 , (pFromY + pToY) / 2 ,pRadius,pRed,pGreen,pBlue,pFilled);
+		return;
+	}
+	else if( pRadius*2 > pToX - pFromX )
+	{
+		pRadius = (pToX - pFromX) / 2;
+	}
+	else if( pRadius*2 > pToY - pFromY )
+	{
+		pRadius = (pToY - pFromY) / 2;
+	}
+
+    int x = pRadius-1;
+    int y = 0;
+    int dx = 1;
+    int dy = 1;
+    int err = dx - (pRadius << 1);
+
+	// Values I need so that the quadrants are positioned in the corners of the rectangle.
+	const int left = pFromX + pRadius; 
+	const int right = pToX - pRadius;
+	const int top = pFromY + pRadius;
+	const int bottom = pToY - pRadius;
+
+    while (x >= y)
+    {
+		if(pFilled)
+		{
+			DrawLineH(left - x, top - y,right + x,pRed,pGreen,pBlue);
+			DrawLineH(left - y, top - x,right + y,pRed,pGreen,pBlue);			
+
+			DrawLineH(left - x, bottom + y,right + x,pRed,pGreen,pBlue);
+			DrawLineH(left - y, bottom + x,right + y,pRed,pGreen,pBlue);
+		}
+		else
+		{
+			WritePixel(left - x, top - y,pRed,pGreen,pBlue);
+			WritePixel(left - y, top - x,pRed,pGreen,pBlue);
+			WritePixel(right + y, top - x,pRed,pGreen,pBlue);
+			WritePixel(right + x, top - y,pRed,pGreen,pBlue);
+
+			WritePixel(right + x, bottom + y,pRed,pGreen,pBlue);
+			WritePixel(right + y, bottom + x,pRed,pGreen,pBlue);
+			WritePixel(left - y, bottom + x,pRed,pGreen,pBlue);
+			WritePixel(left - x, bottom + y,pRed,pGreen,pBlue);
+		}
+
+        if (err <= 0)
+        {
+            y++;
+            err += dy;
+            dy += 2;
+        }
+        if (err > 0)
+        {
+            x--;
+            dx += 2;
+            err += (-pRadius << 1) + dx;
+        }
+    }
+
+	if( pFilled )
+	{
+		DrawRectangle(pFromX,pFromY+pRadius,pToX,pToY-pRadius,pRed,pGreen,pBlue,true);
+	}
+	else
+	{
+		DrawLineH(left,pFromY,right,pRed,pGreen,pBlue);
+		DrawLineH(left,pToY,right,pRed,pGreen,pBlue);
+
+		DrawLineV(pFromX,top,bottom,pRed,pGreen,pBlue);
+		DrawLineV(pToX,top,bottom,pRed,pGreen,pBlue);
+	}
+}
+
+
 void FrameBuffer::DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue)
 {
 	// Do some early outs.
@@ -1653,6 +1740,15 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 				// 
 				// My note, could have been avoided if we just had something like XDisplayStillValid(my display)
 				if (static_cast<Atom>(e.xclient.data.l[0]) == wmDeleteMessage)
+				{
+					mRunMessagePump = false;
+					FrameBuffer::SetKeepGoingFalse();
+				}
+				break;
+
+			case KeyPress:
+				// exit on ESC key press
+				if ( e.xkey.keycode == 0x09 )
 				{
 					mRunMessagePump = false;
 					FrameBuffer::SetKeepGoingFalse();
