@@ -735,12 +735,6 @@ void FrameBuffer::DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t p
 		std::swap(pFromX,pToX);
 	}
 
-	float fromH,fromS,fromV;
-	float toH,toS,toV;
-
-	RGB2HSV(pFormRed,pFormGreen,pFormBlue,fromH,fromS,fromV);
-	RGB2HSV(pToRed,pToGreen,pToBlue,toH,toS,toV);
-
 	float a,s;
 
 	// See if we need to flip the direction of the gradient if they are drawing up instead of down.
@@ -756,14 +750,20 @@ void FrameBuffer::DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t p
 		s = 1.0f / (float)(pToY - pFromY);
 	}
 
+	const float fR = (float)pFormRed / 255.0f;
+	const float fG = (float)pFormGreen / 255.0f;
+	const float fB = (float)pFormBlue / 255.0f;
+
+	const float tR = (float)pToRed / 255.0f;
+	const float tG = (float)pToGreen / 255.0f;
+	const float tB = (float)pToBlue / 255.0f;
+
 	for( int y = pFromY ; y <= pToY ; y++, a += s )
 	{
-		const float H = ((1.0f-a)*fromH) + (a * toH);
-		const float S = ((1.0f-a)*fromS) + (a * toS);
-		const float V = ((1.0f-a)*fromV) + (a * toV);
-
-		uint8_t r,g,b;
-		HSV2RGB(H,S,V,r,g,b);
+		const float invA = 1.0f - a;
+		const uint8_t r = (uint8_t)( ((fR * invA) + (tR * a) ) * 255.0f);
+		const uint8_t g = (uint8_t)( ((fG * invA) + (tG * a) ) * 255.0f);
+		const uint8_t b = (uint8_t)( ((fB * invA) + (tB * a) ) * 255.0f);
 
 		DrawLineH(pFromX,y,pToX,r,g,b);
 	}
@@ -1615,7 +1615,7 @@ void FreeTypeFont::RecomputeBlendTable()
 {
 	uint32_t blendTable[256];
 
-	FrameBuffer::TweenColoursRGB(mPenColour.r,mPenColour.g,mPenColour.b,mBackgroundColour.r,mBackgroundColour.g,mBackgroundColour.b,blendTable);
+	FrameBuffer::TweenColoursRGB(mBackgroundColour.r,mBackgroundColour.g,mBackgroundColour.b,mPenColour.r,mPenColour.g,mPenColour.b,blendTable);
 
 	// Unpack to speed up rendering.
 	for( uint32_t p = 0 ; p < 256 ; p++ )
