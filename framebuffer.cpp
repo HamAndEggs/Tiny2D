@@ -52,10 +52,10 @@ struct X11FrameBufferEmulation
 	Display *mDisplay;
 	Window mWindow;
 	XImage* mFrameBufferImage;
+	Atom mDeleteMessage;
 
-	bool mRunMessagePump;
+	bool mWindowReady;
 	uint8_t* mFrameBuffer;
-	std::thread mMessagePump;
 	struct fb_fix_screeninfo mFixInfo;
 	struct fb_var_screeninfo mVarInfo;
 
@@ -625,6 +625,24 @@ void FrameBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,i
 		DrawRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,pFilled);
 		return;
 	}
+
+	pFromY = std::max(0,std::min(mHeight,pFromY));
+	pToY = std::max(0,std::min(mHeight,pToY));
+
+	if( pFromY == pToY )
+		return;
+
+	if( pFromY > pToY )
+		std::swap(pFromY,pToY);
+
+	pFromX = std::max(0,std::min(mWidth,pFromX));
+	pToX = std::max(0,std::min(mWidth,pToX));
+
+	if( pFromX == pToX )
+		return;
+	
+	if( pFromX > pToX )
+		std::swap(pFromX,pToX);
 
 	if( pRadius > pToX - pFromX && pRadius > pToY - pFromY )
 	{
@@ -1618,7 +1636,7 @@ void FreeTypeFont::RecomputeBlendTable()
 X11FrameBufferEmulation::X11FrameBufferEmulation():
 	mDisplay(NULL),
 	mWindow(0),
-	mRunMessagePump(false),
+	mWindowReady(false),
 	mFrameBuffer(NULL)
 {
 	memset(&mFixInfo,0,sizeof(mFixInfo));
@@ -1628,16 +1646,11 @@ X11FrameBufferEmulation::X11FrameBufferEmulation():
 
 X11FrameBufferEmulation::~X11FrameBufferEmulation()
 {
-	mRunMessagePump = false;
+	mWindowReady = false;
 
 	// Do this after we have set the message pump flag to false so the events generated will case XNextEvent to return.
 	XDestroyWindow(mDisplay,mWindow);
 	XCloseDisplay(mDisplay);
-
-	if( mMessagePump.joinable() )
-	{
-		mMessagePump.join();
-	}
 }
 
 bool X11FrameBufferEmulation::Open(bool pVerbose)
@@ -1713,55 +1726,16 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 							32,
 							0);
 
-	mRunMessagePump = true;
-	bool ExposeReceived = false;
-	mMessagePump = std::thread([this,&ExposeReceived]()
-	{
-		// So I can exit cleanly if the user uses the close window button.
-		Atom wmDeleteMessage = XInternAtom(mDisplay, "WM_DELETE_WINDOW", False);
-		XSetWMProtocols(mDisplay, mWindow, &wmDeleteMessage, 1);
+	// So I can exit cleanly if the user uses the close window button.
+	mDeleteMessage = XInternAtom(mDisplay, "WM_DELETE_WINDOW", False);
+	XSetWMProtocols(mDisplay, mWindow, &mDeleteMessage, 1);
 
-		XEvent e;
-		while( mRunMessagePump )
-		{
-			XNextEvent(mDisplay, &e);
-			switch( e.type )
-			{
-			case Expose:
-				ExposeReceived = true;
-				break;
-
-			case ClientMessage:
-				// All of this is to stop and error when we try to use the display but has been disconnected.
-				// Snip from X11 docs.
-				// 	Clients that choose not to include WM_DELETE_WINDOW in the WM_PROTOCOLS property
-				// 	may be disconnected from the server if the user asks for one of the
-				//  client's top-level windows to be deleted.
-				// 
-				// My note, could have been avoided if we just had something like XDisplayStillValid(my display)
-				if (static_cast<Atom>(e.xclient.data.l[0]) == wmDeleteMessage)
-				{
-					mRunMessagePump = false;
-					FrameBuffer::SetKeepGoingFalse();
-				}
-				break;
-
-			case KeyPress:
-				// exit on ESC key press
-				if ( e.xkey.keycode == 0x09 )
-				{
-					mRunMessagePump = false;
-					FrameBuffer::SetKeepGoingFalse();
-				}
-				break;
-			}
-		};
-	});
 
 	// wait for the expose message.
   	timespec SleepTime = {0,1000000};
-	while( !ExposeReceived )
+	while( !mWindowReady )
 	{
+		Present();
 		nanosleep(&SleepTime,NULL);
 	}
 
@@ -1770,8 +1744,71 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 
 void X11FrameBufferEmulation::Present()
 {
-	GC defGC = DefaultGC(mDisplay, DefaultScreen(mDisplay));
-	XPutImage(mDisplay, mWindow,defGC,mFrameBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
+	// The message pump had to be moved to the same thread as the rendering because otherwise it would fail after a little bit of time.
+	// This is dispite what the documentation stated.
+	while( XPending(mDisplay) )
+	{
+		XEvent e;
+		XNextEvent(mDisplay,&e);
+		switch( e.type )
+		{
+		case Expose:
+			mWindowReady = true;
+			break;
+
+		case ClientMessage:
+			// All of this is to stop and error when we try to use the display but has been disconnected.
+			// Snip from X11 docs.
+			// 	Clients that choose not to include WM_DELETE_WINDOW in the WM_PROTOCOLS property
+			// 	may be disconnected from the server if the user asks for one of the
+			//  client's top-level windows to be deleted.
+			// 
+			// My note, could have been avoided if we just had something like XDisplayStillValid(my display)
+			if (static_cast<Atom>(e.xclient.data.l[0]) == mDeleteMessage)
+			{
+				mWindowReady = false;
+				FrameBuffer::SetKeepGoingFalse();
+			}
+			break;
+
+		case KeyPress:
+			// exit on ESC key press
+			if ( e.xkey.keycode == 0x09 )
+			{
+				mWindowReady = false;
+				FrameBuffer::SetKeepGoingFalse();
+			}
+			break;
+		}
+	}
+
+	if( mWindowReady )
+	{
+		GC defGC = DefaultGC(mDisplay, DefaultScreen(mDisplay));
+		const int ret = XPutImage(mDisplay, mWindow,defGC,mFrameBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
+
+		switch (ret)
+		{
+		case BadDrawable:
+			std::cerr << "XPutImage failed BadDrawable\n";
+			break;
+
+		case BadGC:
+			std::cerr << "XPutImage failed BadGC\n";
+			break;
+
+		case BadMatch:
+			std::cerr << "XPutImage failed BadMatch\n";
+			break;
+
+		case BadValue:
+			std::cerr << "XPutImage failed BadValue\n";
+			break;
+
+		default:
+			break;
+		}
+	}
 }
 
 #endif //#ifdef USE_X11_EMULATION
