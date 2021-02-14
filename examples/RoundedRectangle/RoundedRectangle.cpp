@@ -38,7 +38,9 @@ int main(int argc, char *argv[])
         FB->DrawRoundedRectangle(100,100,400,400,r,255,255,255,true);
         FB->DrawRoundedRectangle(500,100,800,400,r,255,255,255,false);
 
+		FB->DrawRoundedRectangle(-40,50,50,400,30,-1,-1,-1,true);
 
+		FB->DrawRoundedRectangle(0,560,1024,700,30,255,100,30,true);
         
         if(false)
 		{

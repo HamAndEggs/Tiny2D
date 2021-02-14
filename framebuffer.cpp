@@ -626,17 +626,11 @@ void FrameBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,i
 		return;
 	}
 
-	pFromY = std::max(0,std::min(mHeight,pFromY));
-	pToY = std::max(0,std::min(mHeight,pToY));
-
 	if( pFromY == pToY )
 		return;
 
 	if( pFromY > pToY )
 		std::swap(pFromY,pToY);
-
-	pFromX = std::max(0,std::min(mWidth,pFromX));
-	pToX = std::max(0,std::min(mWidth,pToX));
 
 	if( pFromX == pToX )
 		return;
