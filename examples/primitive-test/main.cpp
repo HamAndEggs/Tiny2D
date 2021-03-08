@@ -18,8 +18,15 @@ int main(int argc, char *argv[])
 
 	uint8_t col[8][3] = {{0,0,0},{255,0,0},{0,255,0},{0,0,255},{255,255,255},{255,0,255},{255,255,0},{0,255,255}};
 	
+	float anim = 0.0f;
 	while(FB->GetKeepGoing())
 	{
+		anim += 0.001f;
+		if( anim > 1.0f )
+		{
+			anim -= 1.0f;
+		}
+
 		{
 			int r = (rand()%50)+10;
 			int x = (rand()%(FB->GetWidth()-r-r))+r;
@@ -63,10 +70,6 @@ int main(int argc, char *argv[])
 			FB->DrawRoundedRectangle(FromX,FromY,ToX,ToY,r,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
 		}
 
-		FB->DrawCircle(70,70,50,0,0,0,true);
-		FB->DrawCircle(70,70,40,255,0,0,true);
-		FB->DrawCircle(70,70,30,0,0,255,false);
-
 		FB->DrawRectangle(200,20,600,220,0,0,0,true);
 		FB->DrawRectangle(220,40,580,200,0,255,0,true);
 		FB->DrawRectangle(230,50,570,190,255,0,255,false);
@@ -75,6 +78,12 @@ int main(int argc, char *argv[])
 		FB->DrawRoundedRectangle(220,340,580,500,20,0,255,0,true);
 		FB->DrawRoundedRectangle(230,350,570,490,20,255,0,255,false);
 
+		{
+			int cX = (int)(70.0f + ((FB->GetWidth()-130.0f) * anim));
+			FB->DrawCircle(cX,90,50,0,0,0,true);
+			FB->DrawCircle(cX,90,40,255,0,0,true);
+			FB->DrawCircle(cX,90,30,0,0,255,false);
+		}
 
 		FB->Present();
 	}

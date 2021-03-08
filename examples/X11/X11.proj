@@ -5,18 +5,6 @@
     ],
     "configurations": {
         "release": {
-            "default": true,
-            "target": "executable",
-            "compiler": "gcc",
-            "linker": "gcc",
-            "archiver": "ar",
-            "output_path": "./bin/release/",
-            "standard": "c++14",
-            "optimisation": "2",
-            "debug_level": "0",
-            "warnings_as_errors": true,
-            "enable_all_warnings": true,
-            "fatal_errors": true,
             "include": [
                 "/usr/include/",
                 "./",
@@ -34,18 +22,12 @@
                 "USE_X11_EMULATION"
             ]
         },
-        "debug": {
-            "default": false,
-            "target": "executable",
-            "compiler": "gcc",
-            "linker": "gcc",
-            "archiver": "ar",
-            "output_path": "./bin/debug/",
-            "standard": "c++14",
+        "x11": {
+            "default": true,
             "optimisation": "0",
             "debug_level": "2",
             "warnings_as_errors": false,
-            "enable_all_warnings": false,
+            "enable_all_warnings": true,
             "fatal_errors": false,
             "include": [
                 "/usr/include/",

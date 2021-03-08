@@ -4,8 +4,6 @@
 	{
 		"release":
 		{
-			"optimisation":"3",
-            "debug_level": "0",
 			"include":
 			[
 				"/usr/include/",

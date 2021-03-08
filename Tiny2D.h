@@ -17,6 +17,8 @@
 #ifndef TINY_2D_H
 #define TINY_2D_H
 
+#include <vector>
+
 #include <signal.h>
 #include <stdint.h>
 #include <linux/fb.h>
@@ -71,13 +73,14 @@ public:
 	 * @brief Creates and opens a FrameBuffer object.
 	 * If the OS does not support the frame buffer driver or there is some other error,
 	 * this function will return NULL.
-	 * If enabled, double buffering will reduce the amount of tearing when redrawing the display at the cost of a little speed.
+	 * For simplicity all drawing is done at eight bits per channel to an off screen bufffer.
+	 * This makes the code very simple as the colour space conversion is only done when the
+	 * offscreen buffer is copied to the display.
 	 * 
-	 * @param pDoubleBuffer If true all drawing will be offscreen and you will need to call Present to see the results.
 	 * @param pVerbose get debugging information as the object is created.
 	 * @return FrameBuffer* 
 	 */
-	static FrameBuffer* Open(bool pDoubleBuffer = false,bool pVerbose = false);
+	static FrameBuffer* Open(bool pVerbose = false);
 
 	~FrameBuffer();
 
@@ -142,6 +145,27 @@ public:
 	{
 		WritePixel(pX,pY,PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
 	}
+
+	/**
+	 * @brief Blends a single pixel with the frame buffer. does (S*A) + (D*(1-A))
+	 * The pixel will not be written if it's outside the frame buffers bounds.
+	 * 
+	 * @param pX 
+	 * @param pY 
+	 * @param pRGBA Four bytes, pRGBA[0] == red, pRGBA[1] == green, pRGBA[2] == blue, pRGBA[3] == alpha
+	 */
+	void BlendPixel(int pX,int pY,const uint8_t* pRGBA);
+
+	/**
+	 * @brief Blends a single pixel with the frame buffer. does S + (D * A) Quicker but less flexable.
+	 * The pixel will not be written if it's outside the frame buffers bounds.
+	 * 
+	 * @param pX 
+	 * @param pY 
+	 * @param pRGBA Four bytes, pRGBA[0] == red, pRGBA[1] == green, pRGBA[2] == blue, pRGBA[3] == alpha
+	 */
+	void BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA);
+	
 	
 	/**
 	 * @brief Clears the entire screen.
@@ -177,6 +201,7 @@ public:
 		Allows sub rect render of the source image.
 	*/
 	void BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride);
+
 
 	/**
 	 * @brief Draws a horizontal line.
@@ -421,8 +446,39 @@ public:
 	 */
 	static void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
 
+	/**
+	 * @brief Makes pixels pre multiplied, sets RGB to RGB*A then inverts A.
+ 	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
+ 	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.		
+ 	 * Speeds up rending when alpha is not being modified from (S*A) + (D*(1-A)) to S + (D*A)
+ 	 * For a simple 2D rendering system that's built for portablity that is an easy speed up.
+ 	 * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
+	 * 
+	 * @param pRGBA 
+	 * @param pPixelCount 
+	 */
+	static void PreMultiplyAlphaChannel(uint8_t* pRGBA, int pPixelCount);
+
+	/**
+	 * @brief Makes pixels pre multiplied, sets RGB to RGB*A then inverts A.
+	 * Handy wrapper.
+	 * @param pRGBA 
+	 */
+	static void PreMultiplyAlphaChannel(std::vector<uint8_t>& pRGBA)
+	{
+		PreMultiplyAlphaChannel(pRGBA.data(),pRGBA.size()/4);
+	}
+
 private:
-	FrameBuffer(int pFile,uint8_t* pFrameBuffer,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
+	/**
+	 * @brief Construct a new Frame Buffer object
+	 * @param pFile 
+	 * @param pDisplayBuffer 
+	 * @param pFixInfo 
+	 * @param pScreenInfo 
+	 * @param pVerbose 
+	 */
+	FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
 
 	/*
 		Draws an arbitrary line.
@@ -439,19 +495,21 @@ private:
 	static void CtrlHandler(int SigNum);
 
 	const int mWidth,mHeight;
-	const int mStride;// Num bytes between each line.
-	const int mPixelSize;	// The byte count of each pixel. So to move in the x by one pixel.
-	const int mFrameBufferFile;
-	const int mFrameBufferSize;
-	const bool mVerbose;
-	const struct fb_var_screeninfo mVariableScreenInfo;
 
-	/**
-	 * @brief If double buffer is on then mFrameBuffer is the buffer that is rendered too and display buffer is what is on view.
-	 * If no double buffering, these point to the same memory.
-	 */
-	uint8_t* mFrameBuffer;
-	uint8_t* mDisplayBuffer;
+	// We always render to the frame buffer, do the conversion to the display buffer format when the image is presented.
+	// This makes the drawing code a lot simpler and easier to maintain.
+	const int mDrawBufferStride;		// Num bytes between each line.
+	const int mDrawBufferSize;
+	uint8_t* mDrawBuffer;
+
+	const int mDisplayBufferStride;		// Num bytes between each line.
+	const int mDisplayBufferPixelSize;	// The byte count of each pixel. So to move in the x by one pixel.
+	const int mDisplayBufferFile;
+	const int mDisplayBufferSize;
+	uint8_t*  mDisplayBuffer;
+
+	const struct fb_var_screeninfo mVariableScreenInfo;
+	const bool mVerbose;
 
 	/**
 	 * @brief set to false by the ctrl + c handler.

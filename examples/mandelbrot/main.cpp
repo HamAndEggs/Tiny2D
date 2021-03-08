@@ -107,7 +107,7 @@ void Render(float pZoom)
 
 int main(int argc, char *argv[])
 {	
-	FB = tiny2d::FrameBuffer::Open(true,true);
+	FB = tiny2d::FrameBuffer::Open(true);
 	if( !FB )
 		return 1;
 

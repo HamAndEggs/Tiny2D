@@ -12,7 +12,7 @@
             "fatal_errors": true,
             "include": [
                 "/usr/include/",
-                "./"
+                "../../"
             ],
             "libs": [
                 "m",
@@ -25,7 +25,7 @@
                 "RELEASE_BUILD"
             ]
         },
-        "x11":
+		"x11":
 		{
             "optimisation": "0",
             "debug_level": "2",
@@ -49,6 +49,6 @@
 				"USE_X11_EMULATION"
 			]
 		}
-    },
+   },
     "version": "0.0.1"
 }

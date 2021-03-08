@@ -15,7 +15,7 @@
                 "pthread"
             ]
         },
-        "x11":
+		"x11":
 		{
             "optimisation": "0",
             "debug_level": "2",
