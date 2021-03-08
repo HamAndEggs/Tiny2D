@@ -1,10 +1,10 @@
 
 #include <iostream>
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 int main(int argc, char *argv[])
 {
-	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open();
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open();
 	if( !FB )
 		return EXIT_FAILURE;
 

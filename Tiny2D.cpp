@@ -34,9 +34,9 @@
 	#include <thread>
 #endif
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
-namespace FBIO{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
+namespace tiny2d{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // X11 frame buffer emulation hidden definition.
@@ -1809,5 +1809,5 @@ void X11FrameBufferEmulation::Present()
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-};//namespace FBIO
+};//namespace tiny2d
    

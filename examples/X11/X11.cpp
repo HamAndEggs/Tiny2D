@@ -21,7 +21,7 @@
 #include <cstdarg>
 #include <string.h>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 int main(int argc, char *argv[])
 {
@@ -31,14 +31,14 @@ int main(int argc, char *argv[])
     std::cout << "Build date " << APP_BUILD_DATE << '\n';
     std::cout << "Build time " << APP_BUILD_TIME << '\n';
 
-	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 	if( !FB )
 		return EXIT_FAILURE;
 
 
 	FB->ClearScreen(150,150,150);
 
-	FBIO::PixelFont TheFont(3);
+	tiny2d::PixelFont TheFont(3);
 
     int n = 0;
 	while(FB->GetKeepGoing())

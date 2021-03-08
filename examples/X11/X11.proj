@@ -1,7 +1,7 @@
 {
     "source_files": [
         "X11.cpp",
-		"../../framebuffer.cpp"
+		"../../Tiny2D.cpp"
     ],
     "configurations": {
         "release": {

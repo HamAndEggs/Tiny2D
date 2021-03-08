@@ -1,7 +1,7 @@
 {
     "source_files": [
         "truetype-font.cpp",
-		"../../framebuffer.cpp"
+		"../../Tiny2D.cpp"
     ],
     "configurations": {
         "release": {

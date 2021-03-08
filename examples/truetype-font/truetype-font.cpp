@@ -6,7 +6,7 @@
 #include <cstdarg>
 #include <string.h>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 int main(int argc, char *argv[])
 {
@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
     std::cout << "Build date " << APP_BUILD_DATE << '\n';
     std::cout << "Build time " << APP_BUILD_TIME << '\n';
 
-    FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+    tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 	if( !FB )
     {
 		return EXIT_FAILURE;
@@ -32,11 +32,11 @@ int main(int argc, char *argv[])
     const uint8_t BG_B = 0;
 
 
-    FBIO::FreeTypeFont FTFont("./Blenda Script.otf",60,true);
+    tiny2d::FreeTypeFont FTFont("./Blenda Script.otf",60,true);
     FTFont.SetBackgroundColour(BG_R,BG_G,BG_B);
     FTFont.SetPenColour(0,255,255);
 
-    FBIO::FreeTypeFont FTFont2("./MachineScript.ttf",45,true);
+    tiny2d::FreeTypeFont FTFont2("./MachineScript.ttf",45,true);
     FTFont2.SetBackgroundColour(BG_R,BG_G,BG_B);
     FTFont2.SetPenColour(0,255,0);
 

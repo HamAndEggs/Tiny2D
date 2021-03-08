@@ -6,7 +6,7 @@
 #include <thread>
 #include <unistd.h>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 /******************** JPEG DECOMPRESSION SAMPLE INTERFACE *******************/
  
@@ -103,7 +103,7 @@ METHODDEF(void) my_error_exit (j_common_ptr cinfo)
 * Sample routine for JPEG decompression.  We assume that the source file name
 * is passed in.  We want to return 1 on success, 0 on error.
 */
-GLOBAL(int) read_JPEG_file (char *filename,FBIO::FrameBuffer* FB)
+GLOBAL(int) read_JPEG_file (char *filename,tiny2d::FrameBuffer* FB)
 {	
 	/* This struct contains the JPEG decompression parameters and pointers to
 	* working space (which is allocated as needed by the JPEG library).
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 {
 	if( argc == 2 )
 	{
-		FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+		tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 		if( FB )
 		{
 			read_JPEG_file(argv[1],FB);

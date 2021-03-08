@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <vector>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 class Ball
 {
@@ -89,7 +89,7 @@ static uint8_t RED[256];
 static uint8_t GREEN[256];
 static uint8_t BLUE[256];
 
-void RenderScanLine(FBIO::FrameBuffer* FB,int pFromY,int pToY,const std::vector<Ball>& pBalls)
+void RenderScanLine(tiny2d::FrameBuffer* FB,int pFromY,int pToY,const std::vector<Ball>& pBalls)
 {
 	const int Width = FB->GetWidth();
 
@@ -111,7 +111,7 @@ void RenderScanLine(FBIO::FrameBuffer* FB,int pFromY,int pToY,const std::vector<
 
 int main(int argc, char *argv[])
 {	
-	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 	if( !FB )
 		return 1;
 

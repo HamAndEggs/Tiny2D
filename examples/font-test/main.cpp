@@ -6,7 +6,7 @@
 #include <cstdarg>
 #include <string.h>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 // Very simple button rendering class example. No logic.
 class Button
@@ -29,7 +29,7 @@ public:
 		delete []mText;
 	}
 
-	void Render(FBIO::FrameBuffer* pDest,const FBIO::PixelFont& pFont,bool pPressed)
+	void Render(tiny2d::FrameBuffer* pDest,const tiny2d::PixelFont& pFont,bool pPressed)
 	{
 		pDest->DrawRectangle(mRect.FromX,mRect.FromY,mRect.ToX,mRect.ToY,mFillColour.r,mFillColour.g,mFillColour.b,true);
 	
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
     std::cout << "Build date " << APP_BUILD_DATE << '\n';
     std::cout << "Build time " << APP_BUILD_TIME << '\n';
 
-	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 	if( !FB )
 		return 1;
 
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 
 	FB->ClearScreen(150,150,150);
 
-	FBIO::PixelFont TheFont(3);
+	tiny2d::PixelFont TheFont(3);
 	Button TheButton(100,100,150,50,"This is a button");
 	Button GreenButton(200,200,150,50,"A green button");
 	GreenButton.SetColour(30,150,30);

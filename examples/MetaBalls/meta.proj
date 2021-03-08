@@ -78,7 +78,7 @@
 		}
     },
     "source_files": [
-        "../../framebuffer.cpp",
+        "../../Tiny2D.cpp",
         "./main.cpp"
     ]
 }

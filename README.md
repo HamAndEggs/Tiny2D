@@ -12,7 +12,7 @@ As it's only one header and source file I did not bother creating make / build f
 ## Basic example
 ```c++
 #include "framebuffer.h"
-FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 if( FB )
 {
 	FBIO::Font TheFont(3);

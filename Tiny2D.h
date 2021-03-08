@@ -14,8 +14,8 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#ifndef FRAME_BUFFER_H
-#define FRAME_BUFFER_H
+#ifndef TINY_2D_H
+#define TINY_2D_H
 
 #include <signal.h>
 #include <stdint.h>
@@ -47,7 +47,7 @@
 	#include FT_FREETYPE_H
 #endif
 
-namespace FBIO{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
+namespace tiny2d{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 typedef uint32_t PixelColour;
@@ -565,6 +565,6 @@ private:
 #endif //#ifdef USE_FREETYPEFONTS
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-};//namespace FBIO
+};//namespace tiny2d
 	
-#endif //FRAME_BUFFER_H
+#endif //TINY_2D_H

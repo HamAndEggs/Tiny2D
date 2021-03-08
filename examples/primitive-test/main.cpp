@@ -3,12 +3,12 @@
 #include <cstdlib>
 #include <time.h>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 
 int main(int argc, char *argv[])
 {	
-	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 	if( !FB )
 		return 1;
 

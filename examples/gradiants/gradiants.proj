@@ -1,7 +1,7 @@
 {
     "source_files": [
         "gradiants.cpp",
-   		"../../framebuffer.cpp"
+   		"../../Tiny2D.cpp"
     ],
     "configurations": {
         "release": {

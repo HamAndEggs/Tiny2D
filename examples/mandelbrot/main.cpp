@@ -5,7 +5,7 @@
 #include <math.h>
 #include <unistd.h>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 static uint8_t RED[256];
 static uint8_t GREEN[256];
@@ -18,7 +18,7 @@ public:
 	{
 	}
 
-	void Update(FBIO::FrameBuffer* pFB,int pYStart,int pYStep,float pZoom)
+	void Update(tiny2d::FrameBuffer* pFB,int pYStart,int pYStep,float pZoom)
 	{
 		float fy = -1 + ((pZoom - 1.0f)*0.2f);
 		const float fyInc = 2.0f / (float)pFB->GetHeight();
@@ -65,7 +65,7 @@ private:
 
 };
 
-FBIO::FrameBuffer* FB = NULL;
+tiny2d::FrameBuffer* FB = NULL;
 
 Mandelbrot Cool1;
 Mandelbrot Cool2;
@@ -107,7 +107,7 @@ void Render(float pZoom)
 
 int main(int argc, char *argv[])
 {	
-	FB = FBIO::FrameBuffer::Open(true,true);
+	FB = tiny2d::FrameBuffer::Open(true,true);
 	if( !FB )
 		return 1;
 

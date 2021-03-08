@@ -1,7 +1,7 @@
 {
     "source_files": [
         "blank-screen.cpp",
-   		"../../framebuffer.cpp"
+   		"../../Tiny2D.cpp"
     ],
     "configurations": {
         "release": {

@@ -50,6 +50,6 @@
 	"source_files":
 	[
 		"./main.cpp",
-		"../../framebuffer.cpp"
+		"../../Tiny2D.cpp"
 	]
 }

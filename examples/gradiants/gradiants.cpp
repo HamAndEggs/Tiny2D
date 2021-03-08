@@ -1,7 +1,7 @@
 
 #include <iostream>
 #include <cmath>
-#include "framebuffer.h"
+#include "Tiny2D.h"
 
 int main(int argc, char *argv[])
 {
@@ -11,19 +11,19 @@ int main(int argc, char *argv[])
     std::cout << "Build date " << APP_BUILD_DATE << '\n';
     std::cout << "Build time " << APP_BUILD_TIME << '\n';   
 
-	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 	if( !FB )
 		return EXIT_FAILURE;
 
     uint32_t rRGBBlendTable[256];
     uint32_t rHSVBlendTable[256];
 
-    FBIO::FrameBuffer::TweenColoursRGB(255,0,0,0,255,0,rRGBBlendTable);
-    FBIO::FrameBuffer::TweenColoursHSV(255,0,0,0,255,0,rHSVBlendTable);
+    tiny2d::FrameBuffer::TweenColoursRGB(255,0,0,0,255,0,rRGBBlendTable);
+    tiny2d::FrameBuffer::TweenColoursHSV(255,0,0,0,255,0,rHSVBlendTable);
 
 
-	FBIO::PixelFont TheFont(3);
-	FBIO::PixelFont bigFont(10);
+	tiny2d::PixelFont TheFont(3);
+	tiny2d::PixelFont bigFont(10);
 
     TheFont.SetBorder(true);
     bigFont.SetBorder(true);

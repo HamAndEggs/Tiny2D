@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cmath>
 
-#include "framebuffer.h"
+#include "Tiny2D.h"
 const float pi = std::acos(-1);
 const float radian = pi*2;
 int main(int argc, char *argv[])
@@ -12,13 +12,13 @@ int main(int argc, char *argv[])
     std::cout << "Build date " << APP_BUILD_DATE << '\n';
     std::cout << "Build time " << APP_BUILD_TIME << '\n';
 
-	FBIO::FrameBuffer* FB = FBIO::FrameBuffer::Open(true);
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 	if( !FB )
 		return EXIT_FAILURE;
 
 	uint8_t col[8][3] = {{0,0,0},{255,0,0},{0,255,0},{0,0,255},{255,255,255},{255,0,255},{255,255,0},{0,255,255}};
 	
-	FBIO::PixelFont db(3);
+	tiny2d::PixelFont db(3);
     float t = 0.0f;
 	while(FB->GetKeepGoing())
 	{
