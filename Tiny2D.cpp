@@ -415,7 +415,7 @@ void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pSourc
 	}
 }
 
-void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride)
+void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride,bool pPreMultipliedAlpha)
 {
 	pWidth += pX; 
 	pHeight += pY;
@@ -424,8 +424,8 @@ void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth
 	{
 		for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
 		{
-			const uint8_t* scanline = pSourcePixels;
-			for( int x = pX ; x < mWidth && x < pWidth ; x++, scanline += 4 )
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 4 )
 			{
 				BlendPreAlphaPixel(x,y,pixel);
 			}
@@ -435,8 +435,8 @@ void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth
 	{
 		for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
 		{
-			const uint8_t* scanline = pSourcePixels;
-			for( int x = pX ; x < mWidth && x < pWidth ; x++, scanline += 4 )
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 4 )
 			{
 				BlendPixel(x,y,pixel);
 			}

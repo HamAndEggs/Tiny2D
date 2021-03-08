@@ -218,6 +218,24 @@ public:
 	void BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight,bool pPreMultipliedAlpha = false);
 
 	/**
+	 * @brief Draws the sub rectangle of the image to the draw buffer,
+	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
+	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.
+	 * Renders the image to pX,pY without scaling. Most basic blit.
+	 * 
+	 * @param pSourcePixels 
+	 * @param pX 
+	 * @param pY 
+	 * @param pWidth 
+	 * @param pHeight 
+	 * @param pSourceX 
+	 * @param pSourceY 
+	 * @param pSourceStride 
+	 * @param pPreMultipliedAlpha 
+	 */
+	void BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride,bool pPreMultipliedAlpha = false);
+
+	/**
 	 * @brief Draws a horizontal line.
 	 * 
 	 * @param pFromX 
