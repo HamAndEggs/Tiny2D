@@ -203,7 +203,7 @@ GLOBAL(int) read_JPEG_file (char *filename,tiny2d::FrameBuffer* FB)
 	}
 
 	FB->ClearScreen(255,255,255);
-	FB->BlitRGB24(image,(FB->GetWidth()/2) - (cinfo.output_width/2),(FB->GetHeight()/2) - (cinfo.output_height/2),cinfo.output_width,cinfo.output_height);
+	FB->BlitRGB(image,(FB->GetWidth()/2) - (cinfo.output_width/2),(FB->GetHeight()/2) - (cinfo.output_height/2),cinfo.output_width,cinfo.output_height);
 	
 	delete image;	
 	
