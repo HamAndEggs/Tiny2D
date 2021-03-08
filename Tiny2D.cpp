@@ -364,10 +364,10 @@ void FrameBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pSource
 	int EndY = pSourceHeight + pY;
 	for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 3 )
 	{
-		const uint8_t* scanline = pSourcePixels;
-		for( int x = pX ; x < mWidth && x < EndX ; x++, scanline += 3 )
+		const uint8_t* pixel = pSourcePixels;
+		for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 3 )
 		{
-			WritePixel(x,y,scanline[0],scanline[1],scanline[2]);
+			WritePixel(x,y,pixel[0],pixel[1],pixel[2]);
 		}
 	}
 }
@@ -379,10 +379,10 @@ void FrameBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,
 	pSourcePixels += (pSourceX*3) + (pSourceY * pSourceStride);
 	for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
 	{
-		const uint8_t* scanline = pSourcePixels;
-		for( int x = pX ; x < mWidth && x < pWidth ; x++, scanline += 3 )
+		const uint8_t* pixel = pSourcePixels;
+		for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 3 )
 		{
-			WritePixel(x,y,scanline[0],scanline[1],scanline[2]);
+			WritePixel(x,y,pixel[0],pixel[1],pixel[2]);
 		}
 	}
 }
@@ -408,6 +408,35 @@ void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pSourc
 		{
 			const uint8_t* pixel = pSourcePixels;
 			for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 4 )
+			{
+				BlendPixel(x,y,pixel);
+			}
+		}
+	}
+}
+
+void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride)
+{
+	pWidth += pX; 
+	pHeight += pY;
+	pSourcePixels += (pSourceX*4) + (pSourceY * pSourceStride);
+	if( pPreMultipliedAlpha )
+	{
+		for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
+		{
+			const uint8_t* scanline = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < pWidth ; x++, scanline += 4 )
+			{
+				BlendPreAlphaPixel(x,y,pixel);
+			}
+		}
+	}
+	else
+	{
+		for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
+		{
+			const uint8_t* scanline = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < pWidth ; x++, scanline += 4 )
 			{
 				BlendPixel(x,y,pixel);
 			}
@@ -937,6 +966,24 @@ void FrameBuffer::TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t p
 	}
 }
 
+void FrameBuffer::PreMultiplyAlphaChannel(uint8_t* pRGBA, int pPixelCount)
+{
+	while( pPixelCount-- )
+	{// More readable that doing it all on one line and generates same code once optimized by complier!
+		const uint32_t R = pRGBA[0];
+		const uint32_t G = pRGBA[1];
+		const uint32_t B = pRGBA[2];
+		const uint32_t A = pRGBA[3];
+
+		pRGBA[0] = (uint8_t)((R * A)/255);
+		pRGBA[1] = (uint8_t)((G * A)/255);
+		pRGBA[2] = (uint8_t)((B * A)/255);
+		pRGBA[3] = 255 - A;
+
+		pRGBA += 4;
+	}
+}
+
 sighandler_t FrameBuffer::mUsersSignalAction = NULL;
 bool FrameBuffer::mKeepGoing = false;
 void FrameBuffer::CtrlHandler(int SigNum)
@@ -956,23 +1003,7 @@ void FrameBuffer::CtrlHandler(int SigNum)
 	std::cout << '\n'; // without this the command prompt may be at the end of the ^C char.
 }
 
-void FrameBuffer::PreMultiplyAlphaChannel(uint8_t* pRGBA, int pPixelCount)
-{
-	while( pPixelCount-- )
-	{// More readable that doing it all on one line and generates same code once optimized by complier!
-		const uint32_t R = pRGBA[0];
-		const uint32_t G = pRGBA[1];
-		const uint32_t B = pRGBA[2];
-		const uint32_t A = pRGBA[3];
 
-		pRGBA[0] = (uint8_t)((R * A)/255);
-		pRGBA[1] = (uint8_t)((G * A)/255);
-		pRGBA[2] = (uint8_t)((B * A)/255);
-		pRGBA[3] = 255 - A;
-
-		pRGBA += 4;
-	}
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Font Implementation.

@@ -10,6 +10,7 @@ PROJECTS=(
     "./examples/font-test/"
     "./examples/truetype-font/"
     "./examples/X11/"
+    "./examples/alpha-blend/"
 )
 
 for t in ${PROJECTS[@]}; do
