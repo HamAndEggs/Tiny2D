@@ -280,12 +280,68 @@ void FrameBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t p
 
 void FrameBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
 {
+	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
+	{
+		// When optimized by compiler these const vars will
+		// all move to generate the same code as if I made it all one line and unreadable!
+		// Trust your optimizer. :)
+		const int index = (pX * 3) + (pY * mDrawBufferStride);
+		uint8_t* dst = mDrawBuffer + index;
 
+		assert( index >= 0 );
+		assert( index + 0 < mDrawBufferSize );
+		assert( index + 1 < mDrawBufferSize );
+		assert( index + 2 < mDrawBufferSize );
+
+		const uint32_t sA = pRGBA[3];
+		const uint32_t dA = 255 - sA;
+
+		const uint32_t sR = (pRGBA[0] * sA) / 255;
+		const uint32_t sG = (pRGBA[1] * sA) / 255;
+		const uint32_t sB = (pRGBA[2] * sA) / 255;
+
+		const uint32_t dR = (dst[0] * dA) / 255;
+		const uint32_t dG = (dst[1] * dA) / 255;
+		const uint32_t dB = (dst[2] * dA) / 255;
+
+		dst[0] = (uint8_t)( sR + dR );
+		dst[1] = (uint8_t)( sG + dG );
+		dst[2] = (uint8_t)( sB + dB );
+	}
 }
 
 void FrameBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
 {
+	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
+	{
+		// When optimized by compiler these const vars will
+		// all move to generate the same code as if I made it all one line and unreadable!
+		// Trust your optimizer. :)
+		const int index = (pX * 3) + (pY * mDrawBufferStride);
+		uint8_t* dst = mDrawBuffer + index;
 
+		assert( index >= 0 );
+		assert( index + 0 < mDrawBufferSize );
+		assert( index + 1 < mDrawBufferSize );
+		assert( index + 2 < mDrawBufferSize );
+
+		const uint32_t dA = pRGBA[3];	// Will already have been subtracted from 255. So just use value.
+
+		// Already had Alpha applied, just grab values.
+		const uint32_t sR = pRGBA[0];
+		const uint32_t sG = pRGBA[1];
+		const uint32_t sB = pRGBA[2];
+
+		// Apply alpha to unpredictable colour values.
+		const uint32_t dR = (dst[0] * dA) / 255;
+		const uint32_t dG = (dst[1] * dA) / 255;
+		const uint32_t dB = (dst[2] * dA) / 255;
+
+		// Write new values
+		dst[0] = (uint8_t)( sR + dR );
+		dst[1] = (uint8_t)( sG + dG );
+		dst[2] = (uint8_t)( sB + dB );
+	}
 }
 
 void FrameBuffer::ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
@@ -302,7 +358,7 @@ void FrameBuffer::ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 	}
 }
 
-void FrameBuffer::BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight)
+void FrameBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight)
 {
 	int EndX = pSourceWidth + pX; 
 	int EndY = pSourceHeight + pY;
@@ -316,7 +372,7 @@ void FrameBuffer::BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pSour
 	}
 }
 	
-void FrameBuffer::BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride)
+void FrameBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride)
 {
 	pWidth += pX; 
 	pHeight += pY;
@@ -327,6 +383,34 @@ void FrameBuffer::BlitRGB24(const uint8_t* pSourcePixels,int pX,int pY,int pWidt
 		for( int x = pX ; x < mWidth && x < pWidth ; x++, scanline += 3 )
 		{
 			WritePixel(x,y,scanline[0],scanline[1],scanline[2]);
+		}
+	}
+}
+
+void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight,bool pPreMultipliedAlpha)
+{
+	int EndX = pSourceWidth + pX; 
+	int EndY = pSourceHeight + pY;
+	if( pPreMultipliedAlpha )
+	{
+		for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 4 )
+		{
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 4 )
+			{
+				BlendPreAlphaPixel(x,y,pixel);
+			}
+		}
+	}
+	else
+	{
+		for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 4 )
+		{
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 4 )
+			{
+				BlendPixel(x,y,pixel);
+			}
 		}
 	}
 }
@@ -884,6 +968,7 @@ void FrameBuffer::PreMultiplyAlphaChannel(uint8_t* pRGBA, int pPixelCount)
 		pRGBA[0] = (uint8_t)((R * A)/255);
 		pRGBA[1] = (uint8_t)((G * A)/255);
 		pRGBA[2] = (uint8_t)((B * A)/255);
+		pRGBA[3] = 255 - A;
 
 		pRGBA += 4;
 	}
