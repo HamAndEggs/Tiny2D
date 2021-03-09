@@ -98,6 +98,10 @@ struct TinyImage
 	 * Expect image pixels to vanish after calling. If they don't, it's luck!
 	 */
 	void Resize(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+	void Resize(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false)
+	{
+		Resize(pWidth,pHeight,pWidth * (pHasAlpha?4:3),pHasAlpha,pPreMultipliedAlpha);
+	}
 
 	/**
 	 * @brief Makes the pixels pre multiplied, sets RGB to RGB*A then inverts A.

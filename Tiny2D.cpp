@@ -1026,7 +1026,7 @@ TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pH
 
 TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha,bool pPreMultipliedAlpha)
 {
-	Resize(pWidth,pHeight,(pHasAlpha?4:3),pHasAlpha,pPreMultipliedAlpha);
+	Resize(pWidth,pHeight,pHasAlpha,pPreMultipliedAlpha);
 }
 
 TinyImage::TinyImage()
