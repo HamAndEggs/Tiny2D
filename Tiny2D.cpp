@@ -1087,8 +1087,8 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 	const size_t GreenShift = mVariableScreenInfo.green.offset;
 	const size_t BlueShift = mVariableScreenInfo.blue.offset;
 
-	if( mDisplayBufferPixelSize == pImage.mPixelSize &&
-		mDisplayBufferStride == pImage.mStride &&
+	if( mDisplayBufferPixelSize == pImage.GetPixelSize() &&
+		mDisplayBufferStride == pImage.GetStride() &&
 		mDisplayBufferSize == pImage.mPixels.size() )
 	{// Early out...
 		memcpy(mDisplayBuffer,pImage.mPixels.data(),pImage.mPixels.size());
@@ -1099,7 +1099,7 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 		const u_int8_t* src = pImage.mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 		{
-			for( int x = 0 ; x < mWidth ; x++, src += pImage.mPreMultipliedAlpha )
+			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPreMultipliedAlpha() )
 			{
 				const uint16_t r = src[0] >> 3;
 				const uint16_t g = src[1] >> 2;
@@ -1120,7 +1120,7 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 		const u_int8_t* src = pImage.mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 		{
-			for( int x = 0 ; x < mWidth ; x++, src += pImage.mPixelSize )
+			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize() )
 			{
 				const size_t index = (x * mDisplayBufferPixelSize);
 

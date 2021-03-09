@@ -98,12 +98,6 @@ class DrawBuffer
 public:
 	// For simplicity and flexibility all visable and modifiable. So don't be daft. :) 
 	std::vector<uint8_t> mPixels;
-	int mWidth;
-	int mHeight;
-	size_t mPixelSize;	//!< The number of bytes per pixel.
-	size_t mStride;	//!< The number of bytes per scan line.
-	bool mHasAlpha;
-	bool mPreMultipliedAlpha;
 
 	/**
 	 * @brief Construct a new Tiny Image object
@@ -127,8 +121,11 @@ public:
 	 */
 	DrawBuffer();
 
-	int GetWidth()const{return mWidth;}
-	int GetHeight()const{return mHeight;}
+	inline int GetWidth()const{return mWidth;}
+	inline int GetHeight()const{return mHeight;}
+	inline size_t GetPixelSize()const{return mPixelSize;}
+	inline size_t GetStride()const{return mStride;}
+	inline bool GetPreMultipliedAlpha()const{return mPreMultipliedAlpha;}
 
 	/**
 	 * @brief Get the index of the first byte of the pixel at x,y.
@@ -269,6 +266,13 @@ public:
 	void PreMultiplyAlpha();
 
 private:
+	int mWidth;
+	int mHeight;
+	size_t mPixelSize;	//!< The number of bytes per pixel.
+	size_t mStride;	//!< The number of bytes per scan line.
+	bool mHasAlpha;
+	bool mPreMultipliedAlpha;
+
 	/*
 		Draws an arbitrary line.
 		Using Bresenham's line algorithm

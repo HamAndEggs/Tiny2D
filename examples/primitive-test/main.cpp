@@ -33,18 +33,18 @@ int main(int argc, char *argv[])
 
 		{
 			int r = (rand()%50)+10;
-			int x = (rand()%(RT.mWidth-r-r))+r;
-			int y = (rand()%(RT.mHeight-r-r))+r;
+			int x = (rand()%(RT.GetWidth()-r-r))+r;
+			int y = (rand()%(RT.GetHeight()-r-r))+r;
 			int c = rand()&7;
 
 			RT.DrawCircle(x,y,r,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
 		}
 
 		{
-			int FromX = rand()%RT.mWidth;
-			int FromY = rand()%RT.mHeight;
-			int ToX = rand()%RT.mWidth;
-			int ToY = rand()%RT.mHeight;
+			int FromX = rand()%RT.GetWidth();
+			int FromY = rand()%RT.GetHeight();
+			int ToX = rand()%RT.GetWidth();
+			int ToY = rand()%RT.GetHeight();
 
 			int c = rand()&7;
 			
@@ -52,10 +52,10 @@ int main(int argc, char *argv[])
 		}
 
 		{
-			int FromX = rand()%RT.mWidth;
-			int FromY = rand()%RT.mHeight;
-			int ToX = rand()%RT.mWidth;
-			int ToY = rand()%RT.mHeight;
+			int FromX = rand()%RT.GetWidth();
+			int FromY = rand()%RT.GetHeight();
+			int ToX = rand()%RT.GetWidth();
+			int ToY = rand()%RT.GetHeight();
 
 			int c = rand()&7;
 
@@ -66,10 +66,10 @@ int main(int argc, char *argv[])
 		}
 
 		{
-			int FromX = rand()%RT.mWidth;
-			int FromY = rand()%RT.mHeight;
-			int ToX = rand()%RT.mWidth;
-			int ToY = rand()%RT.mHeight;
+			int FromX = rand()%RT.GetWidth();
+			int FromY = rand()%RT.GetHeight();
+			int ToX = rand()%RT.GetWidth();
+			int ToY = rand()%RT.GetHeight();
 
 			int c = rand()&7;
 			int r = 5 + (rand()&15);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 		RT.DrawRoundedRectangle(230,350,570,490,20,255,0,255);
 
 		{
-			int cX = (int)(70.0f + ((RT.mWidth-130.0f) * anim));
+			int cX = (int)(70.0f + ((RT.GetWidth()-130.0f) * anim));
 			RT.FillCircle(cX,90,50,0,0,0);
 			RT.FillCircle(cX,90,40,255,0,0);
 			RT.DrawCircle(cX,90,30,0,0,255);
