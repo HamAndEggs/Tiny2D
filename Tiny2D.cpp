@@ -338,7 +338,7 @@ void DrawBuffer::Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 	uint8_t *dest = mPixels.data();
 	for( int y = 0 ; y < mHeight ; y++ )
 	{
-		for( int x = 0 ; x < mWidth ; x++, dest += 3 )
+		for( int x = 0 ; x < mWidth ; x++, dest += mPixelSize )
 		{
 			dest[0] = pRed;
 			dest[1] = pGreen;
@@ -351,7 +351,7 @@ void DrawBuffer::Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 		uint8_t *dest = mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++ )
 		{
-			for( int x = 0 ; x < mWidth ; x++, dest += 3 )
+			for( int x = 0 ; x < mWidth ; x++, dest += mPixelSize )
 			{
 				dest[3] = pAlpha;
 			}
