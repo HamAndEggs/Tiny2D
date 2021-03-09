@@ -333,7 +333,7 @@ void DrawBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
 	}
 }
 
-void DrawBuffer::Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+void DrawBuffer::Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
 	uint8_t *dest = mPixels.data();
 	for( int y = 0 ; y < mHeight ; y++ )
@@ -353,7 +353,7 @@ void DrawBuffer::Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 		{
 			for( int x = 0 ; x < mWidth ; x++, dest += 3 )
 			{
-				dest[3] = 255;
+				dest[3] = pAlpha;
 			}
 		}
 	}

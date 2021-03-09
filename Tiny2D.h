@@ -198,15 +198,19 @@ public:
 	 */
 	void BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA);
 	
-	
 	/**
 	 * @brief Clears the entire screen.
-	 * 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
+	 * Alpha ignored it dest has no alpha channel
 	 */
-	void Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+	void Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha);
+
+	/**
+	 * @brief Clears the entire screen.
+	 */
+	void Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+	{
+		Clear(pRed,pGreen,pBlue,255);
+	}
 
 	/**
 	 * @brief Clears the entire screen.
