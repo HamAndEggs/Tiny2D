@@ -1019,23 +1019,28 @@ void FrameBuffer::CtrlHandler(int SigNum)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TinyImage Implementation.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha,bool pPreMultipliedAlpha) :
-	mWidth(pWidth),
-	mHeight(pHeight),
-	mStride(pStride),
-	mHasAlpha(pHasAlpha),
-	mPreMultipliedAlpha(pPreMultipliedAlpha)
+TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha,bool pPreMultipliedAlpha)
 {
-	mPixels.resize(mHeight * mStride);
+	Resize(pWidth,pHeight,pStride,pHasAlpha,pPreMultipliedAlpha);
 }
 
-TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha,bool pPreMultipliedAlpha) :
-	mWidth(pWidth),
-	mHeight(pHeight),
-	mStride(mWidth * (pHasAlpha?4:3)),
-	mHasAlpha(pHasAlpha),
-	mPreMultipliedAlpha(pPreMultipliedAlpha)
+TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha,bool pPreMultipliedAlpha)
 {
+	Resize(pWidth,pHeight,(pHasAlpha?4:3),pHasAlpha,pPreMultipliedAlpha);
+}
+
+TinyImage::TinyImage()
+{
+	Resize(0,0,3,false,false);
+}
+
+void TinyImage::Resize(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha,bool pPreMultipliedAlpha)
+{
+	mWidth = pWidth;
+	mHeight = pHeight;
+	mStride = pStride;
+	mHasAlpha = pHasAlpha;
+	mPreMultipliedAlpha = pPreMultipliedAlpha;
 	mPixels.resize(mHeight * mStride);
 }
 

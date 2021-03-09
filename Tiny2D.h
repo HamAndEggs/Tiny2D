@@ -70,11 +70,12 @@ typedef uint32_t PixelColour;
  */
 struct TinyImage
 {
+	// For simplicity and flexibility all visable and modifiable. So don't be daft. :) 
 	std::vector<uint8_t> mPixels;
-	const uint32_t mWidth;
-	const uint32_t mHeight;
-	const uint32_t mStride;
-	const bool mHasAlpha;
+	uint32_t mWidth;
+	uint32_t mHeight;
+	uint32_t mStride;
+	bool mHasAlpha;
 	bool mPreMultipliedAlpha;
 
 	/**
@@ -86,6 +87,17 @@ struct TinyImage
 	 * @brief Construct a new Tiny Image object assumes stride is width * height * 3 or 4 bytes based on alpha.
 	 */
 	TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Default empty constructor
+	 */
+	TinyImage();
+
+	/**
+	 * @brief Resets the image into a new different size / format.
+	 * Expect image pixels to vanish after calling. If they don't, it's luck!
+	 */
+	void Resize(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
 
 	/**
 	 * @brief Makes the pixels pre multiplied, sets RGB to RGB*A then inverts A.
