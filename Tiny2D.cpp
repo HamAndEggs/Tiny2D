@@ -473,7 +473,7 @@ void DrawBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t p
 		std::swap(pFromX,pToX);
 
 	uint8_t *dest = mPixels.data() + (pFromX * mPixelSize) + (pFromY * mStride);
-	for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += 3 )
+	for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += mPixelSize )
 	{
 		dest[0] = pRed;
 		dest[1] = pGreen;
@@ -597,7 +597,7 @@ void DrawBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t p
 		for( int y = pFromY ; y <= pToY ; y++ )
 		{
 			uint8_t *dest = mPixels.data() + (pFromX * mPixelSize) + (y*mStride);
-			for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += 3 )
+			for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += mPixelSize )
 			{
 				dest[0] = pRed;
 				dest[1] = pGreen;
