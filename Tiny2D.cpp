@@ -161,7 +161,7 @@ void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rB
 	rBlue = (uint8_t)(B * 255.0f);
 }
 
-void TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256])
+void TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint8_t rBlendTable[256][3])
 {
 	float fromH,fromS,fromV;
 	float toH,toS,toV;
@@ -180,18 +180,19 @@ void TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint
 
 		HSV2RGB(H,S,V,r,g,b);
 
-		rBlendTable[n] = MAKE_PIXEL_COLOUR(r,g,b);
+		rBlendTable[n][0] = r;
+		rBlendTable[n][1] = g;
+		rBlendTable[n][2] = b;
 	}
 }
 
-void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256])
+void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint8_t rBlendTable[256][3])
 {
 	for( uint32_t n = 0 ; n < 256 ; n++ )
 	{
-		const uint32_t r = ( (pFromRed   * (255 - n)) + (pToRed   * n) ) / 255;
-		const uint32_t g = ( (pFromGreen * (255 - n)) + (pToGreen * n) ) / 255;
-		const uint32_t b = ( (pFromBlue  * (255 - n)) + (pToBlue  * n) ) / 255;
-		rBlendTable[n] = MAKE_PIXEL_COLOUR(r,g,b);
+		rBlendTable[n][0] = ( (pFromRed   * (255 - n)) + (pToRed   * n) ) / 255;
+		rBlendTable[n][1] = ( (pFromGreen * (255 - n)) + (pToGreen * n) ) / 255;
+		rBlendTable[n][2] = ( (pFromBlue  * (255 - n)) + (pToBlue  * n) ) / 255;
 	}
 }
 
@@ -530,7 +531,7 @@ void DrawBuffer::DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,u
 		DrawLineBresenham(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue);
 }
 
-void DrawBuffer::DrawCircle(int pX,int pY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha,bool pFilled)
+void DrawBuffer::DrawCircle(int pCenterX,int pCenterY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
     int x = pRadius-1;
     int y = 0;
@@ -540,24 +541,14 @@ void DrawBuffer::DrawCircle(int pX,int pY,int pRadius,uint8_t pRed,uint8_t pGree
 
     while (x >= y)
     {
-		if(pFilled)
-		{
-			DrawLineH(pX - x, pY + y,pX + x,pRed,pGreen,pBlue,pAlpha);
-			DrawLineH(pX - x, pY - y,pX + x,pRed,pGreen,pBlue,pAlpha);
-			DrawLineH(pX - y, pY + x,pX + y,pRed,pGreen,pBlue,pAlpha);
-			DrawLineH(pX - y, pY - x,pX + y,pRed,pGreen,pBlue,pAlpha);
-		}
-		else
-		{
-			WritePixel(pX + x, pY + y,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(pX + y, pY + x,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(pX - y, pY + x,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(pX - x, pY + y,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(pX - x, pY - y,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(pX - y, pY - x,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(pX + y, pY - x,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(pX + x, pY - y,pRed,pGreen,pBlue,pAlpha);
-		}
+		WritePixel(pCenterX + x, pCenterY + y,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(pCenterX + y, pCenterY + x,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(pCenterX - y, pCenterY + x,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(pCenterX - x, pCenterY + y,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(pCenterX - x, pCenterY - y,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(pCenterX - y, pCenterY - x,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(pCenterX + y, pCenterY - x,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(pCenterX + x, pCenterY - y,pRed,pGreen,pBlue,pAlpha);
 
         if (err <= 0)
         {
@@ -574,58 +565,78 @@ void DrawBuffer::DrawCircle(int pX,int pY,int pRadius,uint8_t pRed,uint8_t pGree
     }
 }
 
-void DrawBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha,bool pFilled)
+void DrawBuffer::FillCircle(int pCenterX,int pCenterY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
-	if( pFilled )
-	{
-		pFromY = std::max(0,std::min(mHeight,pFromY));
-		pToY = std::max(0,std::min(mHeight,pToY));
+    int x = pRadius-1;
+    int y = 0;
+    int dx = 1;
+    int dy = 1;
+    int err = dx - (pRadius << 1);
 
-		if( pFromY == pToY )
-			return;
+    while (x >= y)
+    {
+		DrawLineH(pCenterX - x, pCenterY + y,pCenterX + x,pRed,pGreen,pBlue,pAlpha);
+		DrawLineH(pCenterX - x, pCenterY - y,pCenterX + x,pRed,pGreen,pBlue,pAlpha);
+		DrawLineH(pCenterX - y, pCenterY + x,pCenterX + y,pRed,pGreen,pBlue,pAlpha);
+		DrawLineH(pCenterX - y, pCenterY - x,pCenterX + y,pRed,pGreen,pBlue,pAlpha);
 
-		if( pFromY > pToY )
-			std::swap(pFromY,pToY);
-
-		pFromX = std::max(0,std::min(mWidth,pFromX));
-		pToX = std::max(0,std::min(mWidth,pToX));
-
-		if( pFromX == pToX )
-			return;
-		
-		if( pFromX > pToX )
-			std::swap(pFromX,pToX);
-
-		for( int y = pFromY ; y <= pToY ; y++ )
-		{
-			uint8_t *dest = mPixels.data() + (pFromX * mPixelSize) + (y*mStride);
-			for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += mPixelSize )
-			{
-				dest[0] = pRed;
-				dest[1] = pGreen;
-				dest[2] = pBlue;
-				if( mHasAlpha )
-				{
-					dest[3] = pAlpha;
-				}
-			}
-		}
-	}
-	else
-	{
-		DrawLineH(pFromX,pFromY,pToX,pRed,pGreen,pBlue,pAlpha);
-		DrawLineH(pFromX,pToY,pToX,pRed,pGreen,pBlue,pAlpha);
-
-		DrawLineV(pFromX,pFromY,pToY,pRed,pGreen,pBlue);
-		DrawLineV(pToX,pFromY,pToY,pRed,pGreen,pBlue,pAlpha);
-	}
+        if (err <= 0)
+        {
+            y++;
+            err += dy;
+            dy += 2;
+        }
+        if (err > 0)
+        {
+            x--;
+            dx += 2;
+            err += (-pRadius << 1) + dx;
+        }
+    }
 }
 
-void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha,bool pFilled)
+
+void DrawBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
+{
+	DrawLineH(pFromX,pFromY,pToX,pRed,pGreen,pBlue,pAlpha);
+	DrawLineH(pFromX,pToY,pToX,pRed,pGreen,pBlue,pAlpha);
+
+	DrawLineV(pFromX,pFromY,pToY,pRed,pGreen,pBlue);
+	DrawLineV(pToX,pFromY,pToY,pRed,pGreen,pBlue,pAlpha);
+}
+
+void DrawBuffer::FillRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
+{
+	pFromY = std::max(0,std::min(mHeight,pFromY));
+	pToY = std::max(0,std::min(mHeight,pToY));
+
+	if( pFromY == pToY )
+		return;
+
+	if( pFromY > pToY )
+		std::swap(pFromY,pToY);
+
+	pFromX = std::max(0,std::min(mWidth,pFromX));
+	pToX = std::max(0,std::min(mWidth,pToX));
+
+	if( pFromX == pToX )
+		return;
+	
+	if( pFromX > pToX )
+		std::swap(pFromX,pToX);
+
+	for( int y = pFromY ; y <= pToY ; y++ )
+	{
+		DrawLineH(pFromX,y,pToX,pRed,pGreen,pBlue,pAlpha);
+	}	
+}
+
+
+void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
 	if( pRadius < 1 )
 	{
-		DrawRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,pAlpha,pFilled);
+		DrawRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,pAlpha);
 		return;
 	}
 
@@ -644,7 +655,7 @@ void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,in
 	if( pRadius > pToX - pFromX && pRadius > pToY - pFromY )
 	{
 		pRadius = (pToX - pFromX) / 2;
-		DrawCircle( (pFromX + pToX) / 2 , (pFromY + pToY) / 2 ,pRadius,pRed,pGreen,pBlue,pAlpha,pFilled);
+		DrawCircle( (pFromX + pToX) / 2 , (pFromY + pToY) / 2 ,pRadius,pRed,pGreen,pBlue,pAlpha);
 		return;
 	}
 	else if( pRadius*2 > pToX - pFromX )
@@ -670,26 +681,15 @@ void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,in
 
     while (x >= y)
     {
-		if(pFilled)
-		{
-			DrawLineH(left - x, top - y,right + x,pRed,pGreen,pBlue,pAlpha);
-			DrawLineH(left - y, top - x,right + y,pRed,pGreen,pBlue,pAlpha);			
+		WritePixel(left - x, top - y,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(left - y, top - x,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(right + y, top - x,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(right + x, top - y,pRed,pGreen,pBlue,pAlpha);
 
-			DrawLineH(left - x, bottom + y,right + x,pRed,pGreen,pBlue,pAlpha);
-			DrawLineH(left - y, bottom + x,right + y,pRed,pGreen,pBlue,pAlpha);
-		}
-		else
-		{
-			WritePixel(left - x, top - y,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(left - y, top - x,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(right + y, top - x,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(right + x, top - y,pRed,pGreen,pBlue,pAlpha);
-
-			WritePixel(right + x, bottom + y,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(right + y, bottom + x,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(left - y, bottom + x,pRed,pGreen,pBlue,pAlpha);
-			WritePixel(left - x, bottom + y,pRed,pGreen,pBlue,pAlpha);
-		}
+		WritePixel(right + x, bottom + y,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(right + y, bottom + x,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(left - y, bottom + x,pRed,pGreen,pBlue,pAlpha);
+		WritePixel(left - x, bottom + y,pRed,pGreen,pBlue,pAlpha);
 
         if (err <= 0)
         {
@@ -705,19 +705,85 @@ void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,in
         }
     }
 
-	if( pFilled )
-	{
-		DrawRectangle(pFromX,pFromY+pRadius,pToX,pToY-pRadius,pRed,pGreen,pBlue,pAlpha,true);
-	}
-	else
-	{
-		DrawLineH(left,pFromY,right,pRed,pGreen,pBlue,pAlpha);
-		DrawLineH(left,pToY,right,pRed,pGreen,pBlue,pAlpha);
+	DrawLineH(left,pFromY,right,pRed,pGreen,pBlue,pAlpha);
+	DrawLineH(left,pToY,right,pRed,pGreen,pBlue,pAlpha);
 
-		DrawLineV(pFromX,top,bottom,pRed,pGreen,pBlue,pAlpha);
-		DrawLineV(pToX,top,bottom,pRed,pGreen,pBlue,pAlpha);
-	}
+	DrawLineV(pFromX,top,bottom,pRed,pGreen,pBlue,pAlpha);
+	DrawLineV(pToX,top,bottom,pRed,pGreen,pBlue,pAlpha);
 }
+
+void DrawBuffer::FillRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
+{
+	if( pRadius < 1 )
+	{
+		FillRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,pAlpha);
+		return;
+	}
+
+	if( pFromY == pToY )
+		return;
+
+	if( pFromY > pToY )
+		std::swap(pFromY,pToY);
+
+	if( pFromX == pToX )
+		return;
+	
+	if( pFromX > pToX )
+		std::swap(pFromX,pToX);
+
+	if( pRadius > pToX - pFromX && pRadius > pToY - pFromY )
+	{
+		pRadius = (pToX - pFromX) / 2;
+		FillCircle( (pFromX + pToX) / 2 , (pFromY + pToY) / 2 ,pRadius,pRed,pGreen,pBlue,pAlpha);
+		return;
+	}
+	else if( pRadius*2 > pToX - pFromX )
+	{
+		pRadius = (pToX - pFromX) / 2;
+	}
+	else if( pRadius*2 > pToY - pFromY )
+	{
+		pRadius = (pToY - pFromY) / 2;
+	}
+
+    int x = pRadius-1;
+    int y = 0;
+    int dx = 1;
+    int dy = 1;
+    int err = dx - (pRadius << 1);
+
+	// Values I need so that the quadrants are positioned in the corners of the rectangle.
+	const int left = pFromX + pRadius; 
+	const int right = pToX - pRadius;
+	const int top = pFromY + pRadius;
+	const int bottom = pToY - pRadius;
+
+    while (x >= y)
+    {
+		DrawLineH(left - x, top - y,right + x,pRed,pGreen,pBlue,pAlpha);
+		DrawLineH(left - y, top - x,right + y,pRed,pGreen,pBlue,pAlpha);			
+
+		DrawLineH(left - x, bottom + y,right + x,pRed,pGreen,pBlue,pAlpha);
+		DrawLineH(left - y, bottom + x,right + y,pRed,pGreen,pBlue,pAlpha);
+
+        if (err <= 0)
+        {
+            y++;
+            err += dy;
+            dy += 2;
+        }
+        if (err > 0)
+        {
+            x--;
+            dx += 2;
+            err += (-pRadius << 1) + dx;
+        }
+    }
+
+	FillRectangle(pFromX,pFromY+pRadius,pToX,pToY-pRadius,pRed,pGreen,pBlue,pAlpha);
+}
+
 
 void DrawBuffer::DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue)
 {
@@ -1021,8 +1087,8 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 	const size_t GreenShift = mVariableScreenInfo.green.offset;
 	const size_t BlueShift = mVariableScreenInfo.blue.offset;
 
-	if( mDisplayBufferPixelSize == pImage.mPixelSize &&
-		mDisplayBufferStride == pImage.mStride &&
+	if( mDisplayBufferPixelSize == pImage.GetPixelSize() &&
+		mDisplayBufferStride == pImage.GetStride() &&
 		mDisplayBufferSize == pImage.mPixels.size() )
 	{// Early out...
 		memcpy(mDisplayBuffer,pImage.mPixels.data(),pImage.mPixels.size());
@@ -1033,7 +1099,7 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 		const u_int8_t* src = pImage.mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 		{
-			for( int x = 0 ; x < mWidth ; x++, src += pImage.mPreMultipliedAlpha )
+			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPreMultipliedAlpha() )
 			{
 				const uint16_t r = src[0] >> 3;
 				const uint16_t g = src[1] >> 2;
@@ -1054,7 +1120,7 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 		const u_int8_t* src = pImage.mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 		{
-			for( int x = 0 ; x < mWidth ; x++, src += pImage.mPixelSize )
+			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize() )
 			{
 				const size_t index = (x * mDisplayBufferPixelSize);
 
@@ -1594,7 +1660,7 @@ void PixelFont::DrawChar(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pG
 					{
 						if( bits&(1<<bit) )
 						{
-							pDest.DrawRectangle(x-1,pY + y - 1,x+1,pY + y + 1,mBorderColour.r,mBorderColour.g,mBorderColour.b,true);
+							pDest.FillRectangle(x-1,pY + y - 1,x+1,pY + y + 1,mBorderColour.r,mBorderColour.g,mBorderColour.b);
 						}
 					}
 				}
@@ -1634,7 +1700,7 @@ void PixelFont::DrawChar(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pG
 					{
 						if( bits&(1<<bit) )
 						{
-							pDest.DrawRectangle(x-1,by-1,x+mPixelSize+1,by+mPixelSize+1,mBorderColour.r,mBorderColour.g,mBorderColour.b,true);
+							pDest.FillRectangle(x-1,by-1,x+mPixelSize+1,by+mPixelSize+1,mBorderColour.r,mBorderColour.g,mBorderColour.b);
 						}
 					}
 				}
@@ -1652,7 +1718,7 @@ void PixelFont::DrawChar(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pG
 				{
 					if( bits&(1<<bit) )
 					{
-						pDest.DrawRectangle(x,pY,x+mPixelSize,pY+mPixelSize,pGreen,pGreen,pBlue,true);
+						pDest.FillRectangle(x,pY,x+mPixelSize,pY+mPixelSize,pGreen,pGreen,pBlue);
 					}
 				}
 			}
@@ -1950,16 +2016,16 @@ void FreeTypeFont::SetBackgroundColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue
 
 void FreeTypeFont::RecomputeBlendTable()
 {
-	uint32_t blendTable[256];
+	uint8_t blendTable[256][3];
 
 	TweenColoursRGB(mBackgroundColour.r,mBackgroundColour.g,mBackgroundColour.b,mPenColour.r,mPenColour.g,mPenColour.b,blendTable);
 
 	// Unpack to speed up rendering.
 	for( uint32_t p = 0 ; p < 256 ; p++ )
 	{
-		mBlended[p].r = PIXEL_COLOUR_RED(blendTable[p]);
-		mBlended[p].g = PIXEL_COLOUR_GREEN(blendTable[p]);
-		mBlended[p].b = PIXEL_COLOUR_BLUE(blendTable[p]);
+		mBlended[p].r = blendTable[p][0];
+		mBlended[p].g = blendTable[p][1];
+		mBlended[p].b = blendTable[p][2];
 	}
 }
 

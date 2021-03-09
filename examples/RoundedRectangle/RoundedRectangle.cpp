@@ -26,21 +26,21 @@ int main(int argc, char *argv[])
         
         int r = (int)((std::sin(t) * 120.0f)+80.0f);// Test negative radius and radius*2 > than width / height...
 
-        RT.DrawRoundedRectangle(900,100,1000,400,r,255,0,255,true);
-        RT.DrawRoundedRectangle(100,450,900,550,r,255,0,255,true);
+        RT.FillRoundedRectangle(900,100,1000,400,r,255,0,255);
+        RT.FillRoundedRectangle(100,450,900,550,r,255,0,255);
 
-        RT.DrawRoundedRectangle(920,120,980,380,r,255,255,255,false);
-        RT.DrawRoundedRectangle(120,470,880,530,r,255,255,255,false);
+        RT.DrawRoundedRectangle(920,120,980,380,r,255,255,255);
+        RT.DrawRoundedRectangle(120,470,880,530,r,255,255,255);
 
-        RT.DrawRectangle(100-4,100-4,400+4,400+4,55,55,55,true);
-        RT.DrawRectangle(500-4,100-4,800+4,400+4,55,55,55,true);
+        RT.FillRectangle(100-4,100-4,400+4,400+4,55,55,55);
+        RT.FillRectangle(500-4,100-4,800+4,400+4,55,55,55);
 
-        RT.DrawRoundedRectangle(100,100,400,400,r,255,255,255,true);
-        RT.DrawRoundedRectangle(500,100,800,400,r,255,255,255,false);
+        RT.FillRoundedRectangle(100,100,400,400,r,255,255,255);
+        RT.DrawRoundedRectangle(500,100,800,400,r,255,255,255);
 
-		RT.DrawRoundedRectangle(-40,50,50,400,30,-1,-1,-1,true);
+		RT.FillRoundedRectangle(-40,50,50,400,30,-1,-1,-1);
 
-		RT.DrawRoundedRectangle(0,560,1024,700,30,255,100,30,true);
+		RT.FillRoundedRectangle(0,560,1024,700,30,255,100,30);
         
 
         t += 0.01f;

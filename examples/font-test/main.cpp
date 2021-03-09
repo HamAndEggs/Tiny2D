@@ -31,7 +31,7 @@ public:
 
 	void Render(tiny2d::DrawBuffer& pRT,const tiny2d::PixelFont& pFont,bool pPressed)
 	{
-		pRT.DrawRectangle(mRect.FromX,mRect.FromY,mRect.ToX,mRect.ToY,mFillColour.r,mFillColour.g,mFillColour.b,true);
+		pRT.FillRectangle(mRect.FromX,mRect.FromY,mRect.ToX,mRect.ToY,mFillColour.r,mFillColour.g,mFillColour.b);
 	
 		if( pPressed )
 		{
@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 	{
 		if( ((n)>>4) != ((n-1)>>4) )
 		{
-			RT.DrawRectangle(9*8*5,0,19*8*5,13*5,150,150,150,true);
+			RT.FillRectangle(9*8*5,0,19*8*5,13*5,150,150,150);
 			TheFont.SetPixelSize(5);
 			TheFont.Printf(RT,0,0,"Counting %d",n>>4);
 		}
