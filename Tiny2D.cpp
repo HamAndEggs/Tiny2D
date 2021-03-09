@@ -239,7 +239,7 @@ void DrawBuffer::Resize(int pWidth, int pHeight, size_t pPixelSize,bool pHasAlph
 	mPixels.resize(mHeight * mStride);
 }
 
-void DrawBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+void DrawBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
 	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
 	{
@@ -256,6 +256,11 @@ void DrawBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pB
 		mPixels[ index + 0 ] = pRed;
 		mPixels[ index + 1 ] = pGreen;
 		mPixels[ index + 2 ] = pBlue;
+
+		if( mHasAlpha )
+		{
+			mPixels[ index + 3 ] = pAlpha;
+		}
 	}
 }
 
@@ -458,7 +463,7 @@ void DrawBuffer::Blit(const DrawBuffer& pImage,int pX,int pY)
 }
 
 
-void DrawBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+void DrawBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
 	if( pFromY < 0 || pFromY >= mHeight )
 		return;
@@ -478,11 +483,15 @@ void DrawBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t p
 		dest[0] = pRed;
 		dest[1] = pGreen;
 		dest[2] = pBlue;
+		if( mHasAlpha )
+		{
+			dest[3] = pAlpha;
+		}
 	}
 
 }
 
-void DrawBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+void DrawBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
 	if( pFromX < 0 || pFromX >= mWidth )
 		return;
@@ -503,6 +512,10 @@ void DrawBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t p
 		dest[0] = pRed;
 		dest[1] = pGreen;
 		dest[2] = pBlue;
+		if( mHasAlpha )
+		{
+			dest[3] = pAlpha;
+		}
 	}
 
 }
@@ -517,7 +530,7 @@ void DrawBuffer::DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,u
 		DrawLineBresenham(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue);
 }
 
-void DrawBuffer::DrawCircle(int pX,int pY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
+void DrawBuffer::DrawCircle(int pX,int pY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha,bool pFilled)
 {
     int x = pRadius-1;
     int y = 0;
@@ -529,32 +542,21 @@ void DrawBuffer::DrawCircle(int pX,int pY,int pRadius,uint8_t pRed,uint8_t pGree
     {
 		if(pFilled)
 		{
-			//WritePixel(pX + x, pY + y,pRed,pGreen,pBlue);
-			//WritePixel(pX - x, pY + y,pRed,pGreen,pBlue);
-			DrawLineH(pX - x, pY + y,pX + x,pRed,pGreen,pBlue);
-
-			//WritePixel(pX - x, pY - y,pRed,pGreen,pBlue);
-			//WritePixel(pX + x, pY - y,pRed,pGreen,pBlue);
-			DrawLineH(pX - x, pY - y,pX + x,pRed,pGreen,pBlue);
-
-			//WritePixel(pX + y, pY + x,pRed,pGreen,pBlue);
-			//WritePixel(pX - y, pY + x,pRed,pGreen,pBlue);
-			DrawLineH(pX - y, pY + x,pX + y,pRed,pGreen,pBlue);
-			
-			//WritePixel(pX - y, pY - x,pRed,pGreen,pBlue);
-			//WritePixel(pX + y, pY - x,pRed,pGreen,pBlue);
-			DrawLineH(pX - y, pY - x,pX + y,pRed,pGreen,pBlue);			
+			DrawLineH(pX - x, pY + y,pX + x,pRed,pGreen,pBlue,pAlpha);
+			DrawLineH(pX - x, pY - y,pX + x,pRed,pGreen,pBlue,pAlpha);
+			DrawLineH(pX - y, pY + x,pX + y,pRed,pGreen,pBlue,pAlpha);
+			DrawLineH(pX - y, pY - x,pX + y,pRed,pGreen,pBlue,pAlpha);
 		}
 		else
 		{
-			WritePixel(pX + x, pY + y,pRed,pGreen,pBlue);
-			WritePixel(pX + y, pY + x,pRed,pGreen,pBlue);
-			WritePixel(pX - y, pY + x,pRed,pGreen,pBlue);
-			WritePixel(pX - x, pY + y,pRed,pGreen,pBlue);
-			WritePixel(pX - x, pY - y,pRed,pGreen,pBlue);
-			WritePixel(pX - y, pY - x,pRed,pGreen,pBlue);
-			WritePixel(pX + y, pY - x,pRed,pGreen,pBlue);
-			WritePixel(pX + x, pY - y,pRed,pGreen,pBlue);
+			WritePixel(pX + x, pY + y,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(pX + y, pY + x,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(pX - y, pY + x,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(pX - x, pY + y,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(pX - x, pY - y,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(pX - y, pY - x,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(pX + y, pY - x,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(pX + x, pY - y,pRed,pGreen,pBlue,pAlpha);
 		}
 
         if (err <= 0)
@@ -572,7 +574,7 @@ void DrawBuffer::DrawCircle(int pX,int pY,int pRadius,uint8_t pRed,uint8_t pGree
     }
 }
 
-void DrawBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
+void DrawBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha,bool pFilled)
 {
 	if( pFilled )
 	{
@@ -602,24 +604,28 @@ void DrawBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t p
 				dest[0] = pRed;
 				dest[1] = pGreen;
 				dest[2] = pBlue;
+				if( mHasAlpha )
+				{
+					dest[3] = pAlpha;
+				}
 			}
 		}
 	}
 	else
 	{
-		DrawLineH(pFromX,pFromY,pToX,pRed,pGreen,pBlue);
-		DrawLineH(pFromX,pToY,pToX,pRed,pGreen,pBlue);
+		DrawLineH(pFromX,pFromY,pToX,pRed,pGreen,pBlue,pAlpha);
+		DrawLineH(pFromX,pToY,pToX,pRed,pGreen,pBlue,pAlpha);
 
 		DrawLineV(pFromX,pFromY,pToY,pRed,pGreen,pBlue);
-		DrawLineV(pToX,pFromY,pToY,pRed,pGreen,pBlue);
+		DrawLineV(pToX,pFromY,pToY,pRed,pGreen,pBlue,pAlpha);
 	}
 }
 
-void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
+void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha,bool pFilled)
 {
 	if( pRadius < 1 )
 	{
-		DrawRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,pFilled);
+		DrawRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,pAlpha,pFilled);
 		return;
 	}
 
@@ -638,7 +644,7 @@ void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,in
 	if( pRadius > pToX - pFromX && pRadius > pToY - pFromY )
 	{
 		pRadius = (pToX - pFromX) / 2;
-		DrawCircle( (pFromX + pToX) / 2 , (pFromY + pToY) / 2 ,pRadius,pRed,pGreen,pBlue,pFilled);
+		DrawCircle( (pFromX + pToX) / 2 , (pFromY + pToY) / 2 ,pRadius,pRed,pGreen,pBlue,pAlpha,pFilled);
 		return;
 	}
 	else if( pRadius*2 > pToX - pFromX )
@@ -666,23 +672,23 @@ void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,in
     {
 		if(pFilled)
 		{
-			DrawLineH(left - x, top - y,right + x,pRed,pGreen,pBlue);
-			DrawLineH(left - y, top - x,right + y,pRed,pGreen,pBlue);			
+			DrawLineH(left - x, top - y,right + x,pRed,pGreen,pBlue,pAlpha);
+			DrawLineH(left - y, top - x,right + y,pRed,pGreen,pBlue,pAlpha);			
 
-			DrawLineH(left - x, bottom + y,right + x,pRed,pGreen,pBlue);
-			DrawLineH(left - y, bottom + x,right + y,pRed,pGreen,pBlue);
+			DrawLineH(left - x, bottom + y,right + x,pRed,pGreen,pBlue,pAlpha);
+			DrawLineH(left - y, bottom + x,right + y,pRed,pGreen,pBlue,pAlpha);
 		}
 		else
 		{
-			WritePixel(left - x, top - y,pRed,pGreen,pBlue);
-			WritePixel(left - y, top - x,pRed,pGreen,pBlue);
-			WritePixel(right + y, top - x,pRed,pGreen,pBlue);
-			WritePixel(right + x, top - y,pRed,pGreen,pBlue);
+			WritePixel(left - x, top - y,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(left - y, top - x,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(right + y, top - x,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(right + x, top - y,pRed,pGreen,pBlue,pAlpha);
 
-			WritePixel(right + x, bottom + y,pRed,pGreen,pBlue);
-			WritePixel(right + y, bottom + x,pRed,pGreen,pBlue);
-			WritePixel(left - y, bottom + x,pRed,pGreen,pBlue);
-			WritePixel(left - x, bottom + y,pRed,pGreen,pBlue);
+			WritePixel(right + x, bottom + y,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(right + y, bottom + x,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(left - y, bottom + x,pRed,pGreen,pBlue,pAlpha);
+			WritePixel(left - x, bottom + y,pRed,pGreen,pBlue,pAlpha);
 		}
 
         if (err <= 0)
@@ -701,15 +707,15 @@ void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,in
 
 	if( pFilled )
 	{
-		DrawRectangle(pFromX,pFromY+pRadius,pToX,pToY-pRadius,pRed,pGreen,pBlue,true);
+		DrawRectangle(pFromX,pFromY+pRadius,pToX,pToY-pRadius,pRed,pGreen,pBlue,pAlpha,true);
 	}
 	else
 	{
-		DrawLineH(left,pFromY,right,pRed,pGreen,pBlue);
-		DrawLineH(left,pToY,right,pRed,pGreen,pBlue);
+		DrawLineH(left,pFromY,right,pRed,pGreen,pBlue,pAlpha);
+		DrawLineH(left,pToY,right,pRed,pGreen,pBlue,pAlpha);
 
-		DrawLineV(pFromX,top,bottom,pRed,pGreen,pBlue);
-		DrawLineV(pToX,top,bottom,pRed,pGreen,pBlue);
+		DrawLineV(pFromX,top,bottom,pRed,pGreen,pBlue,pAlpha);
+		DrawLineV(pToX,top,bottom,pRed,pGreen,pBlue,pAlpha);
 	}
 }
 
