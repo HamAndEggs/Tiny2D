@@ -25,6 +25,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
     }
 
+    tiny2d::DrawBuffer RT(FB);
+
 	srand(time(NULL));
 
     const uint8_t BG_R = 255;
@@ -42,18 +44,18 @@ int main(int argc, char *argv[])
 
     while( FB->GetKeepGoing() )
     {
-	    FB->ClearScreen(BG_R,BG_G,BG_B);
+	    RT.Clear(BG_R,BG_G,BG_B);
 
         FTFont.SetPenColour(0,0,0);
-        FTFont.Printf(FB,0,80,"Blenda Script 0123456789 :)");
+        FTFont.Printf(RT,0,80,"Blenda Script 0123456789 :)");
 
         FTFont.SetPenColour(0,255,255);
-        FTFont.Print(FB,0,180,"Spacing Test iAlBjXvIoiP X l");
+        FTFont.Print(RT,0,180,"Spacing Test iAlBjXvIoiP X l");
 
-        FTFont2.Print(FB,10,300,"Test Number 0123456789");
-        FTFont2.Printf(FB,10,400,"Random Number %d",rand());
+        FTFont2.Print(RT,10,300,"Test Number 0123456789");
+        FTFont2.Printf(RT,10,400,"Random Number %d",rand());
 
-        FB->Present();
+        FB->Present(RT);
         sleep(1);
     }
 

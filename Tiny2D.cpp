@@ -39,6 +39,798 @@
 namespace tiny2d{	// Using a namespace to try to prevent name clashes as my class name is kind of obvious. :)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Colour space Implementation.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+void RGB2HSV(uint8_t pRed,uint8_t pGreen, uint8_t pBlue,float& rH,float& rS, float& rV)
+{
+    float min, max, delta;
+
+	const float red = (float)pRed / 255.0f;
+	const float green = (float)pGreen / 255.0f;
+	const float blue = (float)pBlue / 255.0f;
+
+    min = red < green ? red : green;
+    min = min  < blue ? min  : blue;
+
+    max = red > green ? red : green;
+    max = max  > blue ? max  : blue;
+
+    rV = max;                                // v
+    delta = max - min;
+    if (delta < 0.00001)
+    {
+        rS = 0;
+        rH = 0; // undefined, maybe nan?
+        return;
+    }
+    if( max > 0.0 )
+	{ // NOTE: if Max is == 0, this divide would cause a crash
+        rS = (delta / max);                  // s
+    }
+	else
+	{
+        // if max is 0, then r = g = b = 0              
+        // s = 0, h is undefined
+        rS = 0.0;
+        rH = 0.0;                            // its now undefined
+        return;
+    }
+    if( red >= max )                           // > is bogus, just keeps compiler happy
+        rH = ( green - blue ) / delta;        // between yellow & magenta
+    else
+    if( green >= max )
+        rH = 2.0 + ( blue - red ) / delta;  // between cyan & yellow
+    else
+        rH = 4.0 + ( red - green ) / delta;  // between magenta & cyan
+
+    rH *= 60.0;                              // degrees
+
+    if( rH < 0.0 )
+        rH += 360.0;
+}
+
+void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)
+{
+	float R;
+	float G;
+	float B;
+	if(S <= 0.0f)
+	{
+		R = V;
+		G = V;
+		B = V;
+	}
+	else
+	{
+		float hh, p, q, t, ff;
+		long i;
+
+		hh = H;
+		if(hh >= 360.0) hh = 0.0;
+		hh /= 60.0;
+		i = (long)hh;
+		ff = hh - i;
+		p = V * (1.0 - S);
+		q = V * (1.0 - (S * ff));
+		t = V * (1.0 - (S * (1.0 - ff)));
+
+		switch(i)
+		{
+		case 0:
+			R = V;
+			G = t;
+			B = p;
+			break;
+		
+		case 1:
+			R = q;
+			G = V;
+			B = p;
+			break;
+		
+		case 2:
+			R = p;
+			G = V;
+			B = t;
+			break;
+
+		
+		case 3:
+			R = p;
+			G = q;
+			B = V;
+			break;
+		
+		case 4:
+			R = t;
+			G = p;
+			B = V;
+			break;
+
+		case 5:
+		default:
+			R = V;
+			G = p;
+			B = q;
+			break;
+		}
+	}
+
+	rRed = (uint8_t)(R * 255.0f);
+	rGreen = (uint8_t)(G * 255.0f);
+	rBlue = (uint8_t)(B * 255.0f);
+}
+
+void TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256])
+{
+	float fromH,fromS,fromV;
+	float toH,toS,toV;
+
+	RGB2HSV(pFromRed,pFromGreen,pFromBlue,fromH,fromS,fromV);
+	RGB2HSV(pToRed,pToGreen,pToBlue,toH,toS,toV);
+
+	float a = 0.0f;
+	for( int n = 0 ; n < 256 ; n++, a += (1.0f/255.0f) )
+	{
+		const float H = ((1.0f-a)*fromH) + (a * toH);
+		const float S = ((1.0f-a)*fromS) + (a * toS);
+		const float V = ((1.0f-a)*fromV) + (a * toV);
+
+		uint8_t r,g,b;
+
+		HSV2RGB(H,S,V,r,g,b);
+
+		rBlendTable[n] = MAKE_PIXEL_COLOUR(r,g,b);
+	}
+}
+
+void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256])
+{
+	for( uint32_t n = 0 ; n < 256 ; n++ )
+	{
+		const uint32_t r = ( (pFromRed   * (255 - n)) + (pToRed   * n) ) / 255;
+		const uint32_t g = ( (pFromGreen * (255 - n)) + (pToGreen * n) ) / 255;
+		const uint32_t b = ( (pFromBlue  * (255 - n)) + (pToBlue  * n) ) / 255;
+		rBlendTable[n] = MAKE_PIXEL_COLOUR(r,g,b);
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// DrawBuffer Implementation.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+DrawBuffer::DrawBuffer(int pWidth, int pHeight, size_t pPixelSize,bool pHasAlpha,bool pPreMultipliedAlpha)
+{
+	Resize(pWidth,pHeight,pPixelSize,pHasAlpha,pPreMultipliedAlpha);
+}
+
+DrawBuffer::DrawBuffer(int pWidth, int pHeight,bool pHasAlpha,bool pPreMultipliedAlpha)
+{
+	Resize(pWidth,pHeight,pHasAlpha,pPreMultipliedAlpha);
+}
+
+DrawBuffer::DrawBuffer(const FrameBuffer* pFB)
+{
+	assert( pFB );
+	Resize(pFB->GetWidth(),pFB->GetHeight(),false,false);
+}
+
+DrawBuffer::DrawBuffer() :
+	mWidth(0),
+	mHeight(0),
+	mPixelSize(0),
+	mStride(0),
+	mHasAlpha(false),
+	mPreMultipliedAlpha(false)
+{
+}
+
+void DrawBuffer::Resize(int pWidth, int pHeight, size_t pPixelSize,bool pHasAlpha,bool pPreMultipliedAlpha)
+{
+	assert( pWidth > 0 );
+	assert( pHeight > 0 );
+	assert( pPixelSize > 2 );
+
+	mWidth = pWidth;
+	mHeight = pHeight;
+	mPixelSize = pPixelSize;
+	mStride = pWidth * pPixelSize;
+	mHasAlpha = pHasAlpha;
+	mPreMultipliedAlpha = pPreMultipliedAlpha;
+	mPixels.resize(mHeight * mStride);
+}
+
+void DrawBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
+	{
+		// When optimized by compiler these const vars will
+		// all move to generate the same code as if I made it all one line and unreadable!
+		// Trust your optimizer. :)
+		const size_t index = GetPixelIndex(pX,pY);
+
+		assert( index >= 0 );
+		assert( index + 0 < mPixels.size() );
+		assert( index + 1 < mPixels.size() );
+		assert( index + 2 < mPixels.size() );
+
+		mPixels[ index + 0 ] = pRed;
+		mPixels[ index + 1 ] = pGreen;
+		mPixels[ index + 2 ] = pBlue;
+	}
+}
+
+void DrawBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
+{
+	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
+	{
+		// When optimized by compiler these const vars will
+		// all move to generate the same code as if I made it all one line and unreadable!
+		// Trust your optimizer. :)
+		const size_t index = GetPixelIndex(pX,pY);
+		uint8_t* dst = mPixels.data() + index;
+
+		assert( index >= 0 );
+		assert( index + 0 < mPixels.size() );
+		assert( index + 1 < mPixels.size() );
+		assert( index + 2 < mPixels.size() );
+
+		const uint32_t sA = pRGBA[3];
+		const uint32_t dA = 255 - sA;
+
+		const uint32_t sR = (pRGBA[0] * sA) / 255;
+		const uint32_t sG = (pRGBA[1] * sA) / 255;
+		const uint32_t sB = (pRGBA[2] * sA) / 255;
+
+		const uint32_t dR = (dst[0] * dA) / 255;
+		const uint32_t dG = (dst[1] * dA) / 255;
+		const uint32_t dB = (dst[2] * dA) / 255;
+
+		dst[0] = (uint8_t)( sR + dR );
+		dst[1] = (uint8_t)( sG + dG );
+		dst[2] = (uint8_t)( sB + dB );
+	}
+}
+
+void DrawBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
+{
+	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
+	{
+		// When optimized by compiler these const vars will
+		// all move to generate the same code as if I made it all one line and unreadable!
+		// Trust your optimizer. :)
+		const size_t index = GetPixelIndex(pX,pY);
+		uint8_t* dst = mPixels.data() + index;
+
+		assert( index >= 0 );
+		assert( index + 0 < mPixels.size() );
+		assert( index + 1 < mPixels.size() );
+		assert( index + 2 < mPixels.size() );
+
+		const uint32_t dA = pRGBA[3];	// Will already have been subtracted from 255. So just use value.
+
+		// Already had Alpha applied, just grab values.
+		const uint32_t sR = pRGBA[0];
+		const uint32_t sG = pRGBA[1];
+		const uint32_t sB = pRGBA[2];
+
+		// Apply alpha to unpredictable colour values.
+		const uint32_t dR = (dst[0] * dA) / 255;
+		const uint32_t dG = (dst[1] * dA) / 255;
+		const uint32_t dB = (dst[2] * dA) / 255;
+
+		// Write new values
+		dst[0] = (uint8_t)( sR + dR );
+		dst[1] = (uint8_t)( sG + dG );
+		dst[2] = (uint8_t)( sB + dB );
+	}
+}
+
+void DrawBuffer::Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	uint8_t *dest = mPixels.data();
+	for( int y = 0 ; y < mHeight ; y++ )
+	{
+		for( int x = 0 ; x < mWidth ; x++, dest += 3 )
+		{
+			dest[0] = pRed;
+			dest[1] = pGreen;
+			dest[2] = pBlue;
+		}
+	}
+}
+
+void DrawBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight)
+{
+	int EndX = pSourceWidth + pX; 
+	int EndY = pSourceHeight + pY;
+	for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 3 )
+	{
+		const uint8_t* pixel = pSourcePixels;
+		for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 3 )
+		{
+			WritePixel(x,y,pixel[0],pixel[1],pixel[2]);
+		}
+	}
+}
+	
+void DrawBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride)
+{
+	pWidth += pX; 
+	pHeight += pY;
+	pSourcePixels += (pSourceX*3) + (pSourceY * pSourceStride);
+	for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
+	{
+		const uint8_t* pixel = pSourcePixels;
+		for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 3 )
+		{
+			WritePixel(x,y,pixel[0],pixel[1],pixel[2]);
+		}
+	}
+}
+
+void DrawBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight,bool pPreMultipliedAlpha)
+{
+	int EndX = pSourceWidth + pX; 
+	int EndY = pSourceHeight + pY;
+	if( pPreMultipliedAlpha )
+	{
+		for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 4 )
+		{
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 4 )
+			{
+				BlendPreAlphaPixel(x,y,pixel);
+			}
+		}
+	}
+	else
+	{
+		for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 4 )
+		{
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 4 )
+			{
+				BlendPixel(x,y,pixel);
+			}
+		}
+	}
+}
+
+void DrawBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride,bool pPreMultipliedAlpha)
+{
+	pWidth += pX; 
+	pHeight += pY;
+	pSourcePixels += (pSourceX*4) + (pSourceY * pSourceStride);
+	if( pPreMultipliedAlpha )
+	{
+		for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
+		{
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 4 )
+			{
+				BlendPreAlphaPixel(x,y,pixel);
+			}
+		}
+	}
+	else
+	{
+		for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
+		{
+			const uint8_t* pixel = pSourcePixels;
+			for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 4 )
+			{
+				BlendPixel(x,y,pixel);
+			}
+		}
+	}
+}
+
+void DrawBuffer::Blit(const DrawBuffer& pImage,int pX,int pY)
+{
+	if( pImage.mHasAlpha )
+	{
+		BlitRGBA(pImage.mPixels.data(),pX,pY,pImage.mWidth,pImage.mHeight,0,0,pImage.mStride,pImage.mPreMultipliedAlpha);
+	}
+	else
+	{
+		BlitRGB(pImage.mPixels.data(),pX,pY,pImage.mWidth,pImage.mHeight,0,0,pImage.mStride);
+	}	
+}
+
+
+void DrawBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	if( pFromY < 0 || pFromY >= mHeight )
+		return;
+
+	pFromX = std::max(0,std::min(mWidth,pFromX));
+	pToX = std::max(0,std::min(mWidth,pToX));
+
+	if( pFromX == pToX )
+		return;
+	
+	if( pFromX > pToX )
+		std::swap(pFromX,pToX);
+
+	uint8_t *dest = mPixels.data() + (pFromX * mPixelSize) + (pFromY * mStride);
+	for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += 3 )
+	{
+		dest[0] = pRed;
+		dest[1] = pGreen;
+		dest[2] = pBlue;
+	}
+
+}
+
+void DrawBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	if( pFromX < 0 || pFromX >= mWidth )
+		return;
+
+	pFromY = std::max(0,std::min(mHeight,pFromY));
+	pToY = std::max(0,std::min(mHeight,pToY));
+
+	if( pFromY == pToY )
+		return;
+
+	if( pFromY > pToY )
+		std::swap(pFromY,pToY);
+
+
+	uint8_t *dest = mPixels.data() + (pFromX * mPixelSize) + (pFromY*mStride);
+	for( int y = pFromY ; y <= pToY && y < mHeight ; y++, dest += mStride )
+	{
+		dest[0] = pRed;
+		dest[1] = pGreen;
+		dest[2] = pBlue;
+	}
+
+}
+
+void DrawBuffer::DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	if( pFromX == pToX )
+		DrawLineV(pFromX,pFromY,pToY,pRed,pGreen,pBlue);
+	else if( pFromY == pToY )
+		DrawLineH(pFromX,pFromY,pToX,pRed,pGreen,pBlue);
+	else
+		DrawLineBresenham(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue);
+}
+
+void DrawBuffer::DrawCircle(int pX,int pY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
+{
+    int x = pRadius-1;
+    int y = 0;
+    int dx = 1;
+    int dy = 1;
+    int err = dx - (pRadius << 1);
+
+    while (x >= y)
+    {
+		if(pFilled)
+		{
+			//WritePixel(pX + x, pY + y,pRed,pGreen,pBlue);
+			//WritePixel(pX - x, pY + y,pRed,pGreen,pBlue);
+			DrawLineH(pX - x, pY + y,pX + x,pRed,pGreen,pBlue);
+
+			//WritePixel(pX - x, pY - y,pRed,pGreen,pBlue);
+			//WritePixel(pX + x, pY - y,pRed,pGreen,pBlue);
+			DrawLineH(pX - x, pY - y,pX + x,pRed,pGreen,pBlue);
+
+			//WritePixel(pX + y, pY + x,pRed,pGreen,pBlue);
+			//WritePixel(pX - y, pY + x,pRed,pGreen,pBlue);
+			DrawLineH(pX - y, pY + x,pX + y,pRed,pGreen,pBlue);
+			
+			//WritePixel(pX - y, pY - x,pRed,pGreen,pBlue);
+			//WritePixel(pX + y, pY - x,pRed,pGreen,pBlue);
+			DrawLineH(pX - y, pY - x,pX + y,pRed,pGreen,pBlue);			
+		}
+		else
+		{
+			WritePixel(pX + x, pY + y,pRed,pGreen,pBlue);
+			WritePixel(pX + y, pY + x,pRed,pGreen,pBlue);
+			WritePixel(pX - y, pY + x,pRed,pGreen,pBlue);
+			WritePixel(pX - x, pY + y,pRed,pGreen,pBlue);
+			WritePixel(pX - x, pY - y,pRed,pGreen,pBlue);
+			WritePixel(pX - y, pY - x,pRed,pGreen,pBlue);
+			WritePixel(pX + y, pY - x,pRed,pGreen,pBlue);
+			WritePixel(pX + x, pY - y,pRed,pGreen,pBlue);
+		}
+
+        if (err <= 0)
+        {
+            y++;
+            err += dy;
+            dy += 2;
+        }
+        if (err > 0)
+        {
+            x--;
+            dx += 2;
+            err += (-pRadius << 1) + dx;
+        }
+    }
+}
+
+void DrawBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
+{
+	if( pFilled )
+	{
+		pFromY = std::max(0,std::min(mHeight,pFromY));
+		pToY = std::max(0,std::min(mHeight,pToY));
+
+		if( pFromY == pToY )
+			return;
+
+		if( pFromY > pToY )
+			std::swap(pFromY,pToY);
+
+		pFromX = std::max(0,std::min(mWidth,pFromX));
+		pToX = std::max(0,std::min(mWidth,pToX));
+
+		if( pFromX == pToX )
+			return;
+		
+		if( pFromX > pToX )
+			std::swap(pFromX,pToX);
+
+		for( int y = pFromY ; y <= pToY ; y++ )
+		{
+			uint8_t *dest = mPixels.data() + (pFromX * mPixelSize) + (y*mStride);
+			for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += 3 )
+			{
+				dest[0] = pRed;
+				dest[1] = pGreen;
+				dest[2] = pBlue;
+			}
+		}
+	}
+	else
+	{
+		DrawLineH(pFromX,pFromY,pToX,pRed,pGreen,pBlue);
+		DrawLineH(pFromX,pToY,pToX,pRed,pGreen,pBlue);
+
+		DrawLineV(pFromX,pFromY,pToY,pRed,pGreen,pBlue);
+		DrawLineV(pToX,pFromY,pToY,pRed,pGreen,pBlue);
+	}
+}
+
+void DrawBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
+{
+	if( pRadius < 1 )
+	{
+		DrawRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,pFilled);
+		return;
+	}
+
+	if( pFromY == pToY )
+		return;
+
+	if( pFromY > pToY )
+		std::swap(pFromY,pToY);
+
+	if( pFromX == pToX )
+		return;
+	
+	if( pFromX > pToX )
+		std::swap(pFromX,pToX);
+
+	if( pRadius > pToX - pFromX && pRadius > pToY - pFromY )
+	{
+		pRadius = (pToX - pFromX) / 2;
+		DrawCircle( (pFromX + pToX) / 2 , (pFromY + pToY) / 2 ,pRadius,pRed,pGreen,pBlue,pFilled);
+		return;
+	}
+	else if( pRadius*2 > pToX - pFromX )
+	{
+		pRadius = (pToX - pFromX) / 2;
+	}
+	else if( pRadius*2 > pToY - pFromY )
+	{
+		pRadius = (pToY - pFromY) / 2;
+	}
+
+    int x = pRadius-1;
+    int y = 0;
+    int dx = 1;
+    int dy = 1;
+    int err = dx - (pRadius << 1);
+
+	// Values I need so that the quadrants are positioned in the corners of the rectangle.
+	const int left = pFromX + pRadius; 
+	const int right = pToX - pRadius;
+	const int top = pFromY + pRadius;
+	const int bottom = pToY - pRadius;
+
+    while (x >= y)
+    {
+		if(pFilled)
+		{
+			DrawLineH(left - x, top - y,right + x,pRed,pGreen,pBlue);
+			DrawLineH(left - y, top - x,right + y,pRed,pGreen,pBlue);			
+
+			DrawLineH(left - x, bottom + y,right + x,pRed,pGreen,pBlue);
+			DrawLineH(left - y, bottom + x,right + y,pRed,pGreen,pBlue);
+		}
+		else
+		{
+			WritePixel(left - x, top - y,pRed,pGreen,pBlue);
+			WritePixel(left - y, top - x,pRed,pGreen,pBlue);
+			WritePixel(right + y, top - x,pRed,pGreen,pBlue);
+			WritePixel(right + x, top - y,pRed,pGreen,pBlue);
+
+			WritePixel(right + x, bottom + y,pRed,pGreen,pBlue);
+			WritePixel(right + y, bottom + x,pRed,pGreen,pBlue);
+			WritePixel(left - y, bottom + x,pRed,pGreen,pBlue);
+			WritePixel(left - x, bottom + y,pRed,pGreen,pBlue);
+		}
+
+        if (err <= 0)
+        {
+            y++;
+            err += dy;
+            dy += 2;
+        }
+        if (err > 0)
+        {
+            x--;
+            dx += 2;
+            err += (-pRadius << 1) + dx;
+        }
+    }
+
+	if( pFilled )
+	{
+		DrawRectangle(pFromX,pFromY+pRadius,pToX,pToY-pRadius,pRed,pGreen,pBlue,true);
+	}
+	else
+	{
+		DrawLineH(left,pFromY,right,pRed,pGreen,pBlue);
+		DrawLineH(left,pToY,right,pRed,pGreen,pBlue);
+
+		DrawLineV(pFromX,top,bottom,pRed,pGreen,pBlue);
+		DrawLineV(pToX,top,bottom,pRed,pGreen,pBlue);
+	}
+}
+
+void DrawBuffer::DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue)
+{
+	// Do some early outs.
+	if( pFromY == pToY || pFromX == pToX )
+		return;
+
+	// Make sure X is in the right direction.
+	if( pFromX > pToX )
+	{
+		std::swap(pFromX,pToX);
+	}
+
+	float a,s;
+
+	// See if we need to flip the direction of the gradient if they are drawing up instead of down.
+	if( pFromY > pToY )
+	{
+		std::swap(pFromY,pToY);
+		a = 1.0f;
+		s = -1.0f / (float)(pToY - pFromY);
+	}
+	else
+	{
+		a = 0.0f;
+		s = 1.0f / (float)(pToY - pFromY);
+	}
+
+	const float fR = (float)pFormRed / 255.0f;
+	const float fG = (float)pFormGreen / 255.0f;
+	const float fB = (float)pFormBlue / 255.0f;
+
+	const float tR = (float)pToRed / 255.0f;
+	const float tG = (float)pToGreen / 255.0f;
+	const float tB = (float)pToBlue / 255.0f;
+
+	for( int y = pFromY ; y <= pToY ; y++, a += s )
+	{
+		const float invA = 1.0f - a;
+		const uint8_t r = (uint8_t)( ((fR * invA) + (tR * a) ) * 255.0f);
+		const uint8_t g = (uint8_t)( ((fG * invA) + (tG * a) ) * 255.0f);
+		const uint8_t b = (uint8_t)( ((fB * invA) + (tB * a) ) * 255.0f);
+
+		DrawLineH(pFromX,y,pToX,r,g,b);
+	}
+}
+
+void DrawBuffer::PreMultiplyAlpha()
+{
+	assert( mPreMultipliedAlpha == false ); // Can't do this more than once!
+	assert( mHasAlpha ); // Has to have alpha data!
+	assert( (mPixels.size()&3) == 0 ); // Must be multiples for four bytes!
+
+	uint8_t* pixel = mPixels.data();
+	size_t pixelCount = mPixels.size()/4;
+	mPreMultipliedAlpha = true;
+	while( pixelCount-- )
+	{// More readable that doing it all on one line and generates same code once optimized by complier!
+		const uint32_t R = pixel[0];
+		const uint32_t G = pixel[1];
+		const uint32_t B = pixel[2];
+		const uint32_t A = pixel[3];
+
+		pixel[0] = (uint8_t)((R * A)/255);
+		pixel[1] = (uint8_t)((G * A)/255);
+		pixel[2] = (uint8_t)((B * A)/255);
+		pixel[3] = 255 - A;
+
+		pixel += 4;
+	}
+}
+
+
+void DrawBuffer::DrawLineBresenham(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	// Deals with all 8 quadrants.
+	int deltax = pToX - pFromX;	// The difference between the x's
+	int deltay = pToY - pFromY;	// The difference between the y's	
+	int x = pFromX;				// Start x off at the first pixel
+	int y = pFromY;				// Start y off at the first pixel
+
+	int xinc1 = 1;
+	int xinc2 = 1;
+	int yinc1 = 1;
+	int yinc2 = 1;
+
+	if( deltax < 0 )
+	{// The x-values are decreasing
+		deltax = -deltax;
+		xinc1 = -1;
+		xinc2 = -1;
+	}
+
+	if( deltay < 0 )
+	{// The y-values are decreasing
+		deltay = -deltay;
+		yinc1 = -1;
+		yinc2 = -1;
+	}
+
+	int den,num,numadd,numpixels,curpixel;
+	if( deltax >= deltay )
+	{// There is at least one x-value for every y-value
+		xinc1 = 0;	// Don't change the x when numerator >= denominator
+		yinc2 = 0;	// Don't change the y for every iteration
+		den = deltax;
+		num = deltax>>1;
+		numadd = deltay;
+		numpixels = deltax;// There are more x-values than y-values
+	}
+	else
+	{ // There is at least one y-value for every x-value
+		xinc2 = 0;	// Don't change the x for every iteration
+		yinc1 = 0;	// Don't change the y when numerator >= denominator
+		den = deltay;
+		num = deltay>>1;
+		numadd = deltax;
+		numpixels = deltay;// There are more y-values than x-values
+	}
+
+	for( curpixel = 0 ; curpixel <= numpixels ; curpixel++ )
+	{
+		if( x > -1 && x < mWidth && y > -1 && y < mHeight )
+		{
+			WritePixel(x,y,pRed,pGreen,pBlue);
+		}
+		num += numadd;	// Increase the numerator by the top of the fraction
+		if (num >= den)	// Check if numerator >= denominator
+		{
+			num -= den;	// Calculate the new numerator value
+			x += xinc1;	// Change the x as appropriate
+			y += yinc1;	// Change the y as appropriate
+		}
+		x += xinc2;		// Change the x as appropriate
+		y += yinc2;		// Change the y as appropriate
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // X11 frame buffer emulation hidden definition.
 // Implementation is at the bottom of the source file.
 // This code is intended to allow development on a full desktop system for applications that
@@ -162,14 +954,10 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeni
 	mWidth(pScreenInfo.xres),
 	mHeight(pScreenInfo.yres),
 
-	mDrawBufferStride(mWidth * 3),
-	mDrawBufferSize(mHeight * mDrawBufferStride),
-	mDrawBuffer(new uint8_t[mDrawBufferSize]),
-
 	mDisplayBufferStride(pFixInfo.line_length),
 	mDisplayBufferPixelSize(pScreenInfo.bits_per_pixel/8),
-	mDisplayBufferFile(pFile),
 	mDisplayBufferSize(pFixInfo.smem_len),
+	mDisplayBufferFile(pFile),
 	mDisplayBuffer(pDisplayBuffer),
 
 	mVariableScreenInfo(pScreenInfo),
@@ -189,33 +977,37 @@ FrameBuffer::~FrameBuffer()
 	{
 		std::cout << "Freeing frame buffer resources, frame buffer object will be invalid and not unusable.\n";
 	}
+
+	// First make sure monitor is not left showing a static screen. Clear to black.
+	memset(mDisplayBuffer,0,mDisplayBufferSize);
+
 	munmap((void*)mDisplayBuffer,mDisplayBufferSize);
 	close(mDisplayBufferFile);
 #endif //#ifdef USE_X11_EMULATION
-
-	delete []mDrawBuffer;
 }
 
-void FrameBuffer::Present()
+void FrameBuffer::Present(const DrawBuffer& pImage)
 {
 	// When optimized by compiler these const vars will
 	// all move to generate the same code as if I made it all one line and unreadable!
 	// Trust your optimizer. :)
-	const int RedShift = mVariableScreenInfo.red.offset;
-	const int GreenShift = mVariableScreenInfo.green.offset;
-	const int BlueShift = mVariableScreenInfo.blue.offset;
+	const size_t RedShift = mVariableScreenInfo.red.offset;
+	const size_t GreenShift = mVariableScreenInfo.green.offset;
+	const size_t BlueShift = mVariableScreenInfo.blue.offset;
 
-	if( mDisplayBufferPixelSize == 3 && mDisplayBufferStride == mDrawBufferStride && mDisplayBufferSize == mDrawBufferSize )
+	if( mDisplayBufferPixelSize == pImage.mPixelSize &&
+		mDisplayBufferStride == pImage.mStride &&
+		mDisplayBufferSize == pImage.mPixels.size() )
 	{// Early out...
-		memcpy(mDisplayBuffer,mDrawBuffer,mDrawBufferSize);
+		memcpy(mDisplayBuffer,pImage.mPixels.data(),pImage.mPixels.size());
 	}
 	else if( mDisplayBufferPixelSize == 2 )
 	{
 		uint16_t* dst = (uint16_t*)(mDisplayBuffer);
-		const u_int8_t* src = mDrawBuffer;
+		const u_int8_t* src = pImage.mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 		{
-			for( int x = 0 ; x < mWidth ; x++, src += 3 )
+			for( int x = 0 ; x < mWidth ; x++, src += pImage.mPreMultipliedAlpha )
 			{
 				const uint16_t r = src[0] >> 3;
 				const uint16_t g = src[1] >> 2;
@@ -233,12 +1025,12 @@ void FrameBuffer::Present()
 	{
 		assert( mDisplayBufferPixelSize == 3 || mDisplayBufferPixelSize == 4 );
 		u_int8_t* dst = mDisplayBuffer;
-		const u_int8_t* src = mDrawBuffer;
+		const u_int8_t* src = pImage.mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 		{
-			for( int x = 0 ; x < mWidth ; x++, src += 3 )
+			for( int x = 0 ; x < mWidth ; x++, src += pImage.mPixelSize )
 			{
-				const int index = (x * mDisplayBufferPixelSize);
+				const size_t index = (x * mDisplayBufferPixelSize);
 
 				assert( index >= 0 );
 				assert( index + (RedShift/8) < mDisplayBufferSize );
@@ -256,745 +1048,6 @@ void FrameBuffer::Present()
 #ifdef USE_X11_EMULATION
 	mX11->Present();
 #endif //#ifdef USE_X11_EMULATION
-}
-
-void FrameBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
-{
-	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
-	{
-		// When optimized by compiler these const vars will
-		// all move to generate the same code as if I made it all one line and unreadable!
-		// Trust your optimizer. :)
-		const int index = (pX * 3) + (pY * mDrawBufferStride);
-
-		assert( index >= 0 );
-		assert( index + 0 < mDrawBufferSize );
-		assert( index + 1 < mDrawBufferSize );
-		assert( index + 2 < mDrawBufferSize );
-
-		mDrawBuffer[ index + 0 ] = pRed;
-		mDrawBuffer[ index + 1 ] = pGreen;
-		mDrawBuffer[ index + 2 ] = pBlue;
-	}
-}
-
-void FrameBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
-{
-	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
-	{
-		// When optimized by compiler these const vars will
-		// all move to generate the same code as if I made it all one line and unreadable!
-		// Trust your optimizer. :)
-		const int index = (pX * 3) + (pY * mDrawBufferStride);
-		uint8_t* dst = mDrawBuffer + index;
-
-		assert( index >= 0 );
-		assert( index + 0 < mDrawBufferSize );
-		assert( index + 1 < mDrawBufferSize );
-		assert( index + 2 < mDrawBufferSize );
-
-		const uint32_t sA = pRGBA[3];
-		const uint32_t dA = 255 - sA;
-
-		const uint32_t sR = (pRGBA[0] * sA) / 255;
-		const uint32_t sG = (pRGBA[1] * sA) / 255;
-		const uint32_t sB = (pRGBA[2] * sA) / 255;
-
-		const uint32_t dR = (dst[0] * dA) / 255;
-		const uint32_t dG = (dst[1] * dA) / 255;
-		const uint32_t dB = (dst[2] * dA) / 255;
-
-		dst[0] = (uint8_t)( sR + dR );
-		dst[1] = (uint8_t)( sG + dG );
-		dst[2] = (uint8_t)( sB + dB );
-	}
-}
-
-void FrameBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
-{
-	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
-	{
-		// When optimized by compiler these const vars will
-		// all move to generate the same code as if I made it all one line and unreadable!
-		// Trust your optimizer. :)
-		const int index = (pX * 3) + (pY * mDrawBufferStride);
-		uint8_t* dst = mDrawBuffer + index;
-
-		assert( index >= 0 );
-		assert( index + 0 < mDrawBufferSize );
-		assert( index + 1 < mDrawBufferSize );
-		assert( index + 2 < mDrawBufferSize );
-
-		const uint32_t dA = pRGBA[3];	// Will already have been subtracted from 255. So just use value.
-
-		// Already had Alpha applied, just grab values.
-		const uint32_t sR = pRGBA[0];
-		const uint32_t sG = pRGBA[1];
-		const uint32_t sB = pRGBA[2];
-
-		// Apply alpha to unpredictable colour values.
-		const uint32_t dR = (dst[0] * dA) / 255;
-		const uint32_t dG = (dst[1] * dA) / 255;
-		const uint32_t dB = (dst[2] * dA) / 255;
-
-		// Write new values
-		dst[0] = (uint8_t)( sR + dR );
-		dst[1] = (uint8_t)( sG + dG );
-		dst[2] = (uint8_t)( sB + dB );
-	}
-}
-
-void FrameBuffer::ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
-{
-	uint8_t *dest = mDrawBuffer;
-	for( int y = 0 ; y < mHeight ; y++ )
-	{
-		for( int x = 0 ; x < mWidth ; x++, dest += 3 )
-		{
-			dest[0] = pRed;
-			dest[1] = pGreen;
-			dest[2] = pBlue;
-		}
-	}
-}
-
-void FrameBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight)
-{
-	int EndX = pSourceWidth + pX; 
-	int EndY = pSourceHeight + pY;
-	for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 3 )
-	{
-		const uint8_t* pixel = pSourcePixels;
-		for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 3 )
-		{
-			WritePixel(x,y,pixel[0],pixel[1],pixel[2]);
-		}
-	}
-}
-	
-void FrameBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride)
-{
-	pWidth += pX; 
-	pHeight += pY;
-	pSourcePixels += (pSourceX*3) + (pSourceY * pSourceStride);
-	for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
-	{
-		const uint8_t* pixel = pSourcePixels;
-		for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 3 )
-		{
-			WritePixel(x,y,pixel[0],pixel[1],pixel[2]);
-		}
-	}
-}
-
-void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight,bool pPreMultipliedAlpha)
-{
-	int EndX = pSourceWidth + pX; 
-	int EndY = pSourceHeight + pY;
-	if( pPreMultipliedAlpha )
-	{
-		for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 4 )
-		{
-			const uint8_t* pixel = pSourcePixels;
-			for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 4 )
-			{
-				BlendPreAlphaPixel(x,y,pixel);
-			}
-		}
-	}
-	else
-	{
-		for( int y = pY ; y < mHeight && y < EndY ; y++, pSourcePixels += pSourceWidth * 4 )
-		{
-			const uint8_t* pixel = pSourcePixels;
-			for( int x = pX ; x < mWidth && x < EndX ; x++, pixel += 4 )
-			{
-				BlendPixel(x,y,pixel);
-			}
-		}
-	}
-}
-
-void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride,bool pPreMultipliedAlpha)
-{
-	pWidth += pX; 
-	pHeight += pY;
-	pSourcePixels += (pSourceX*4) + (pSourceY * pSourceStride);
-	if( pPreMultipliedAlpha )
-	{
-		for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
-		{
-			const uint8_t* pixel = pSourcePixels;
-			for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 4 )
-			{
-				BlendPreAlphaPixel(x,y,pixel);
-			}
-		}
-	}
-	else
-	{
-		for( int y = pY ; y < mHeight && y < pHeight ; y++, pSourcePixels += pSourceStride )
-		{
-			const uint8_t* pixel = pSourcePixels;
-			for( int x = pX ; x < mWidth && x < pWidth ; x++, pixel += 4 )
-			{
-				BlendPixel(x,y,pixel);
-			}
-		}
-	}
-}
-
-void FrameBuffer::Blit(const TinyImage& pImage,int pX,int pY)
-{
-	if( pImage.mHasAlpha )
-	{
-		BlitRGBA(pImage.mPixels.data(),pX,pY,pImage.mWidth,pImage.mHeight,0,0,pImage.mStride,pImage.mPreMultipliedAlpha);
-	}
-	else
-	{
-		BlitRGB(pImage.mPixels.data(),pX,pY,pImage.mWidth,pImage.mHeight,0,0,pImage.mStride);
-	}	
-}
-
-
-void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
-{
-	if( pFromY < 0 || pFromY >= mHeight )
-		return;
-
-	pFromX = std::max(0,std::min(mWidth,pFromX));
-	pToX = std::max(0,std::min(mWidth,pToX));
-
-	if( pFromX == pToX )
-		return;
-	
-	if( pFromX > pToX )
-		std::swap(pFromX,pToX);
-
-	uint8_t *dest = mDrawBuffer + (pFromX * 3) + (pFromY * mDrawBufferStride);
-	for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += 3 )
-	{
-		dest[0] = pRed;
-		dest[1] = pGreen;
-		dest[2] = pBlue;
-	}
-
-}
-
-void FrameBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
-{
-	if( pFromX < 0 || pFromX >= mWidth )
-		return;
-
-	pFromY = std::max(0,std::min(mHeight,pFromY));
-	pToY = std::max(0,std::min(mHeight,pToY));
-
-	if( pFromY == pToY )
-		return;
-
-	if( pFromY > pToY )
-		std::swap(pFromY,pToY);
-
-
-	uint8_t *dest = mDrawBuffer + (pFromX*3) + (pFromY*mDrawBufferStride);
-	for( int y = pFromY ; y <= pToY && y < mHeight ; y++, dest += mDrawBufferStride )
-	{
-		dest[0] = pRed;
-		dest[1] = pGreen;
-		dest[2] = pBlue;
-	}
-
-}
-
-void FrameBuffer::DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
-{
-	if( pFromX == pToX )
-		DrawLineV(pFromX,pFromY,pToY,pRed,pGreen,pBlue);
-	else if( pFromY == pToY )
-		DrawLineH(pFromX,pFromY,pToX,pRed,pGreen,pBlue);
-	else
-		DrawLineBresenham(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue);
-}
-
-void FrameBuffer::DrawLineBresenham(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
-{
-	// Deals with all 8 quadrants.
-	int deltax = pToX - pFromX;	// The difference between the x's
-	int deltay = pToY - pFromY;	// The difference between the y's	
-	int x = pFromX;				// Start x off at the first pixel
-	int y = pFromY;				// Start y off at the first pixel
-
-	int xinc1 = 1;
-	int xinc2 = 1;
-	int yinc1 = 1;
-	int yinc2 = 1;
-
-	if( deltax < 0 )
-	{// The x-values are decreasing
-		deltax = -deltax;
-		xinc1 = -1;
-		xinc2 = -1;
-	}
-
-	if( deltay < 0 )
-	{// The y-values are decreasing
-		deltay = -deltay;
-		yinc1 = -1;
-		yinc2 = -1;
-	}
-
-	int den,num,numadd,numpixels,curpixel;
-	if( deltax >= deltay )
-	{// There is at least one x-value for every y-value
-		xinc1 = 0;	// Don't change the x when numerator >= denominator
-		yinc2 = 0;	// Don't change the y for every iteration
-		den = deltax;
-		num = deltax>>1;
-		numadd = deltay;
-		numpixels = deltax;// There are more x-values than y-values
-	}
-	else
-	{ // There is at least one y-value for every x-value
-		xinc2 = 0;	// Don't change the x for every iteration
-		yinc1 = 0;	// Don't change the y when numerator >= denominator
-		den = deltay;
-		num = deltay>>1;
-		numadd = deltax;
-		numpixels = deltay;// There are more y-values than x-values
-	}
-
-	for( curpixel = 0 ; curpixel <= numpixels ; curpixel++ )
-	{
-		if( x > -1 && x < mWidth && y > -1 && y < mHeight )
-		{
-			WritePixel(x,y,pRed,pGreen,pBlue);
-		}
-		num += numadd;	// Increase the numerator by the top of the fraction
-		if (num >= den)	// Check if numerator >= denominator
-		{
-			num -= den;	// Calculate the new numerator value
-			x += xinc1;	// Change the x as appropriate
-			y += yinc1;	// Change the y as appropriate
-		}
-		x += xinc2;		// Change the x as appropriate
-		y += yinc2;		// Change the y as appropriate
-	}
-}
-
-void FrameBuffer::DrawCircle(int pX,int pY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
-{
-    int x = pRadius-1;
-    int y = 0;
-    int dx = 1;
-    int dy = 1;
-    int err = dx - (pRadius << 1);
-
-    while (x >= y)
-    {
-		if(pFilled)
-		{
-			//WritePixel(pX + x, pY + y,pRed,pGreen,pBlue);
-			//WritePixel(pX - x, pY + y,pRed,pGreen,pBlue);
-			DrawLineH(pX - x, pY + y,pX + x,pRed,pGreen,pBlue);
-
-			//WritePixel(pX - x, pY - y,pRed,pGreen,pBlue);
-			//WritePixel(pX + x, pY - y,pRed,pGreen,pBlue);
-			DrawLineH(pX - x, pY - y,pX + x,pRed,pGreen,pBlue);
-
-			//WritePixel(pX + y, pY + x,pRed,pGreen,pBlue);
-			//WritePixel(pX - y, pY + x,pRed,pGreen,pBlue);
-			DrawLineH(pX - y, pY + x,pX + y,pRed,pGreen,pBlue);
-			
-			//WritePixel(pX - y, pY - x,pRed,pGreen,pBlue);
-			//WritePixel(pX + y, pY - x,pRed,pGreen,pBlue);
-			DrawLineH(pX - y, pY - x,pX + y,pRed,pGreen,pBlue);			
-		}
-		else
-		{
-			WritePixel(pX + x, pY + y,pRed,pGreen,pBlue);
-			WritePixel(pX + y, pY + x,pRed,pGreen,pBlue);
-			WritePixel(pX - y, pY + x,pRed,pGreen,pBlue);
-			WritePixel(pX - x, pY + y,pRed,pGreen,pBlue);
-			WritePixel(pX - x, pY - y,pRed,pGreen,pBlue);
-			WritePixel(pX - y, pY - x,pRed,pGreen,pBlue);
-			WritePixel(pX + y, pY - x,pRed,pGreen,pBlue);
-			WritePixel(pX + x, pY - y,pRed,pGreen,pBlue);
-		}
-
-        if (err <= 0)
-        {
-            y++;
-            err += dy;
-            dy += 2;
-        }
-        if (err > 0)
-        {
-            x--;
-            dx += 2;
-            err += (-pRadius << 1) + dx;
-        }
-    }
-}
-
-void FrameBuffer::DrawRectangle(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
-{
-	if( pFilled )
-	{
-		pFromY = std::max(0,std::min(mHeight,pFromY));
-		pToY = std::max(0,std::min(mHeight,pToY));
-
-		if( pFromY == pToY )
-			return;
-
-		if( pFromY > pToY )
-			std::swap(pFromY,pToY);
-
-		pFromX = std::max(0,std::min(mWidth,pFromX));
-		pToX = std::max(0,std::min(mWidth,pToX));
-
-		if( pFromX == pToX )
-			return;
-		
-		if( pFromX > pToX )
-			std::swap(pFromX,pToX);
-
-		for( int y = pFromY ; y <= pToY ; y++ )
-		{
-			uint8_t *dest = mDrawBuffer + (pFromX*3) + (y*mDrawBufferStride);
-			for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += 3 )
-			{
-				dest[0] = pRed;
-				dest[1] = pGreen;
-				dest[2] = pBlue;
-			}
-		}
-	}
-	else
-	{
-		DrawLineH(pFromX,pFromY,pToX,pRed,pGreen,pBlue);
-		DrawLineH(pFromX,pToY,pToX,pRed,pGreen,pBlue);
-
-		DrawLineV(pFromX,pFromY,pToY,pRed,pGreen,pBlue);
-		DrawLineV(pToX,pFromY,pToY,pRed,pGreen,pBlue);
-	}
-}
-
-void FrameBuffer::DrawRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,bool pFilled)
-{
-	if( pRadius < 1 )
-	{
-		DrawRectangle(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue,pFilled);
-		return;
-	}
-
-	if( pFromY == pToY )
-		return;
-
-	if( pFromY > pToY )
-		std::swap(pFromY,pToY);
-
-	if( pFromX == pToX )
-		return;
-	
-	if( pFromX > pToX )
-		std::swap(pFromX,pToX);
-
-	if( pRadius > pToX - pFromX && pRadius > pToY - pFromY )
-	{
-		pRadius = (pToX - pFromX) / 2;
-		DrawCircle( (pFromX + pToX) / 2 , (pFromY + pToY) / 2 ,pRadius,pRed,pGreen,pBlue,pFilled);
-		return;
-	}
-	else if( pRadius*2 > pToX - pFromX )
-	{
-		pRadius = (pToX - pFromX) / 2;
-	}
-	else if( pRadius*2 > pToY - pFromY )
-	{
-		pRadius = (pToY - pFromY) / 2;
-	}
-
-    int x = pRadius-1;
-    int y = 0;
-    int dx = 1;
-    int dy = 1;
-    int err = dx - (pRadius << 1);
-
-	// Values I need so that the quadrants are positioned in the corners of the rectangle.
-	const int left = pFromX + pRadius; 
-	const int right = pToX - pRadius;
-	const int top = pFromY + pRadius;
-	const int bottom = pToY - pRadius;
-
-    while (x >= y)
-    {
-		if(pFilled)
-		{
-			DrawLineH(left - x, top - y,right + x,pRed,pGreen,pBlue);
-			DrawLineH(left - y, top - x,right + y,pRed,pGreen,pBlue);			
-
-			DrawLineH(left - x, bottom + y,right + x,pRed,pGreen,pBlue);
-			DrawLineH(left - y, bottom + x,right + y,pRed,pGreen,pBlue);
-		}
-		else
-		{
-			WritePixel(left - x, top - y,pRed,pGreen,pBlue);
-			WritePixel(left - y, top - x,pRed,pGreen,pBlue);
-			WritePixel(right + y, top - x,pRed,pGreen,pBlue);
-			WritePixel(right + x, top - y,pRed,pGreen,pBlue);
-
-			WritePixel(right + x, bottom + y,pRed,pGreen,pBlue);
-			WritePixel(right + y, bottom + x,pRed,pGreen,pBlue);
-			WritePixel(left - y, bottom + x,pRed,pGreen,pBlue);
-			WritePixel(left - x, bottom + y,pRed,pGreen,pBlue);
-		}
-
-        if (err <= 0)
-        {
-            y++;
-            err += dy;
-            dy += 2;
-        }
-        if (err > 0)
-        {
-            x--;
-            dx += 2;
-            err += (-pRadius << 1) + dx;
-        }
-    }
-
-	if( pFilled )
-	{
-		DrawRectangle(pFromX,pFromY+pRadius,pToX,pToY-pRadius,pRed,pGreen,pBlue,true);
-	}
-	else
-	{
-		DrawLineH(left,pFromY,right,pRed,pGreen,pBlue);
-		DrawLineH(left,pToY,right,pRed,pGreen,pBlue);
-
-		DrawLineV(pFromX,top,bottom,pRed,pGreen,pBlue);
-		DrawLineV(pToX,top,bottom,pRed,pGreen,pBlue);
-	}
-}
-
-
-void FrameBuffer::DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue)
-{
-	// Do some early outs.
-	if( pFromY == pToY || pFromX == pToX )
-		return;
-
-	// Make sure X is in the right direction.
-	if( pFromX > pToX )
-	{
-		std::swap(pFromX,pToX);
-	}
-
-	float a,s;
-
-	// See if we need to flip the direction of the gradient if they are drawing up instead of down.
-	if( pFromY > pToY )
-	{
-		std::swap(pFromY,pToY);
-		a = 1.0f;
-		s = -1.0f / (float)(pToY - pFromY);
-	}
-	else
-	{
-		a = 0.0f;
-		s = 1.0f / (float)(pToY - pFromY);
-	}
-
-	const float fR = (float)pFormRed / 255.0f;
-	const float fG = (float)pFormGreen / 255.0f;
-	const float fB = (float)pFormBlue / 255.0f;
-
-	const float tR = (float)pToRed / 255.0f;
-	const float tG = (float)pToGreen / 255.0f;
-	const float tB = (float)pToBlue / 255.0f;
-
-	for( int y = pFromY ; y <= pToY ; y++, a += s )
-	{
-		const float invA = 1.0f - a;
-		const uint8_t r = (uint8_t)( ((fR * invA) + (tR * a) ) * 255.0f);
-		const uint8_t g = (uint8_t)( ((fG * invA) + (tG * a) ) * 255.0f);
-		const uint8_t b = (uint8_t)( ((fB * invA) + (tB * a) ) * 255.0f);
-
-		DrawLineH(pFromX,y,pToX,r,g,b);
-	}
-}
-
-
-void FrameBuffer::RGB2HSV(uint8_t pRed,uint8_t pGreen, uint8_t pBlue,float& rH,float& rS, float& rV)
-{
-    float min, max, delta;
-
-	const float red = (float)pRed / 255.0f;
-	const float green = (float)pGreen / 255.0f;
-	const float blue = (float)pBlue / 255.0f;
-
-    min = red < green ? red : green;
-    min = min  < blue ? min  : blue;
-
-    max = red > green ? red : green;
-    max = max  > blue ? max  : blue;
-
-    rV = max;                                // v
-    delta = max - min;
-    if (delta < 0.00001)
-    {
-        rS = 0;
-        rH = 0; // undefined, maybe nan?
-        return;
-    }
-    if( max > 0.0 )
-	{ // NOTE: if Max is == 0, this divide would cause a crash
-        rS = (delta / max);                  // s
-    }
-	else
-	{
-        // if max is 0, then r = g = b = 0              
-        // s = 0, h is undefined
-        rS = 0.0;
-        rH = 0.0;                            // its now undefined
-        return;
-    }
-    if( red >= max )                           // > is bogus, just keeps compiler happy
-        rH = ( green - blue ) / delta;        // between yellow & magenta
-    else
-    if( green >= max )
-        rH = 2.0 + ( blue - red ) / delta;  // between cyan & yellow
-    else
-        rH = 4.0 + ( red - green ) / delta;  // between magenta & cyan
-
-    rH *= 60.0;                              // degrees
-
-    if( rH < 0.0 )
-        rH += 360.0;
-}
-
-void FrameBuffer::HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue)
-{
-	float R;
-	float G;
-	float B;
-	if(S <= 0.0f)
-	{
-		R = V;
-		G = V;
-		B = V;
-	}
-	else
-	{
-		float hh, p, q, t, ff;
-		long i;
-
-		hh = H;
-		if(hh >= 360.0) hh = 0.0;
-		hh /= 60.0;
-		i = (long)hh;
-		ff = hh - i;
-		p = V * (1.0 - S);
-		q = V * (1.0 - (S * ff));
-		t = V * (1.0 - (S * (1.0 - ff)));
-
-		switch(i)
-		{
-		case 0:
-			R = V;
-			G = t;
-			B = p;
-			break;
-		
-		case 1:
-			R = q;
-			G = V;
-			B = p;
-			break;
-		
-		case 2:
-			R = p;
-			G = V;
-			B = t;
-			break;
-
-		
-		case 3:
-			R = p;
-			G = q;
-			B = V;
-			break;
-		
-		case 4:
-			R = t;
-			G = p;
-			B = V;
-			break;
-
-		case 5:
-		default:
-			R = V;
-			G = p;
-			B = q;
-			break;
-		}
-	}
-
-	rRed = (uint8_t)(R * 255.0f);
-	rGreen = (uint8_t)(G * 255.0f);
-	rBlue = (uint8_t)(B * 255.0f);
-}
-
-void FrameBuffer::TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256])
-{
-	float fromH,fromS,fromV;
-	float toH,toS,toV;
-
-	RGB2HSV(pFromRed,pFromGreen,pFromBlue,fromH,fromS,fromV);
-	RGB2HSV(pToRed,pToGreen,pToBlue,toH,toS,toV);
-
-	float a = 0.0f;
-	for( int n = 0 ; n < 256 ; n++, a += (1.0f/255.0f) )
-	{
-		const float H = ((1.0f-a)*fromH) + (a * toH);
-		const float S = ((1.0f-a)*fromS) + (a * toS);
-		const float V = ((1.0f-a)*fromV) + (a * toV);
-
-		uint8_t r,g,b;
-
-		HSV2RGB(H,S,V,r,g,b);
-
-		rBlendTable[n] = MAKE_PIXEL_COLOUR(r,g,b);
-	}
-}
-
-void FrameBuffer::TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256])
-{
-	for( uint32_t n = 0 ; n < 256 ; n++ )
-	{
-		const uint32_t r = ( (pFromRed   * (255 - n)) + (pToRed   * n) ) / 255;
-		const uint32_t g = ( (pFromGreen * (255 - n)) + (pToGreen * n) ) / 255;
-		const uint32_t b = ( (pFromBlue  * (255 - n)) + (pToBlue  * n) ) / 255;
-		rBlendTable[n] = MAKE_PIXEL_COLOUR(r,g,b);
-	}
-}
-
-void FrameBuffer::PreMultiplyAlphaChannel(uint8_t* pRGBA, int pPixelCount)
-{
-	while( pPixelCount-- )
-	{// More readable that doing it all on one line and generates same code once optimized by complier!
-		const uint32_t R = pRGBA[0];
-		const uint32_t G = pRGBA[1];
-		const uint32_t B = pRGBA[2];
-		const uint32_t A = pRGBA[3];
-
-		pRGBA[0] = (uint8_t)((R * A)/255);
-		pRGBA[1] = (uint8_t)((G * A)/255);
-		pRGBA[2] = (uint8_t)((B * A)/255);
-		pRGBA[3] = 255 - A;
-
-		pRGBA += 4;
-	}
 }
 
 sighandler_t FrameBuffer::mUsersSignalAction = NULL;
@@ -1017,57 +1070,190 @@ void FrameBuffer::CtrlHandler(int SigNum)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-// TinyImage Implementation.
+// X11FrameBufferEmulation Implementation.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha,bool pPreMultipliedAlpha)
+#ifdef USE_X11_EMULATION
+/**
+ * @brief This codebase is expected to be used for a system not running X11. But to aid development there is an option to 'emulate' a frame buffer with an X11 window.
+ * 
+ */
+X11FrameBufferEmulation::X11FrameBufferEmulation():
+	mDisplay(NULL),
+	mWindow(0),
+	mWindowReady(false),
+	mDisplayBuffer(NULL)
 {
-	Resize(pWidth,pHeight,pStride,pHasAlpha,pPreMultipliedAlpha);
+	memset(&mFixInfo,0,sizeof(mFixInfo));
+	memset(&mVarInfo,0,sizeof(mVarInfo));
+
 }
 
-TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha,bool pPreMultipliedAlpha)
+X11FrameBufferEmulation::~X11FrameBufferEmulation()
 {
-	Resize(pWidth,pHeight,pHasAlpha,pPreMultipliedAlpha);
+	mWindowReady = false;
+
+	// Do this after we have set the message pump flag to false so the events generated will case XNextEvent to return.
+	XDestroyWindow(mDisplay,mWindow);
+	XCloseDisplay(mDisplay);
 }
 
-TinyImage::TinyImage()
+bool X11FrameBufferEmulation::Open(bool pVerbose)
 {
-	Resize(0,0,3,false,false);
+	// Before we do anything do this. So we can run message pump on it's own thread.
+	XInitThreads();
+
+	const struct fb_fix_screeninfo finfo =
+	{
+		"X11",
+		0,
+		X11_EMULATION_WIDTH * X11_EMULATION_HEIGHT * 4,
+		FB_TYPE_PACKED_PIXELS,
+		0,
+		FB_VISUAL_TRUECOLOR,
+		0,0,0,
+		X11_EMULATION_WIDTH*4,
+		0,0,0,0,
+		{0,0}
+	};
+	mFixInfo = finfo;
+
+	mVarInfo.xres = X11_EMULATION_WIDTH;
+	mVarInfo.yres = X11_EMULATION_HEIGHT;
+	mVarInfo.bits_per_pixel = 32;
+
+	mVarInfo.red.offset = 16;
+	mVarInfo.red.length = 8;
+
+	mVarInfo.green.offset = 8;
+	mVarInfo.green.length = 8;
+
+	mVarInfo.blue.offset = 0;
+	mVarInfo.blue.length = 8;
+	
+	mVarInfo.width = X11_EMULATION_WIDTH;
+	mVarInfo.height = X11_EMULATION_HEIGHT;
+
+	mDisplay = XOpenDisplay(NULL);
+	if( mDisplay == NULL )
+	{
+		std::cerr << "Failed to open X display.\n";
+		return false;
+	}
+		
+	mWindow = XCreateSimpleWindow(
+					mDisplay,
+					RootWindow(mDisplay, 0),
+					10, 10,
+					X11_EMULATION_WIDTH, X11_EMULATION_HEIGHT,
+					1,
+					BlackPixel(mDisplay, 0),
+					WhitePixel(mDisplay, 0));
+
+	XSelectInput(mDisplay, mWindow, ExposureMask | KeyPressMask | StructureNotifyMask );
+	XMapWindow(mDisplay, mWindow);
+
+	mDisplayBuffer = (uint8_t*)malloc(mFixInfo.smem_len);
+	memset(mDisplayBuffer,0,mFixInfo.smem_len);
+
+	Visual *visual=DefaultVisual(mDisplay, 0);
+	const int defDepth = DefaultDepth(mDisplay,DefaultScreen(mDisplay));
+	mDisplayBufferImage = XCreateImage(
+							mDisplay,
+							visual,
+							defDepth,
+							ZPixmap,
+							0,
+							(char*)mDisplayBuffer,
+							mVarInfo.width,
+							mVarInfo.height,
+							32,
+							0);
+
+	// So I can exit cleanly if the user uses the close window button.
+	mDeleteMessage = XInternAtom(mDisplay, "WM_DELETE_WINDOW", False);
+	XSetWMProtocols(mDisplay, mWindow, &mDeleteMessage, 1);
+
+	// wait for the expose message.
+  	timespec SleepTime = {0,1000000};
+	while( !mWindowReady )
+	{
+		Present();
+		nanosleep(&SleepTime,NULL);
+	}
+
+	return true;
 }
 
-void TinyImage::Resize(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha,bool pPreMultipliedAlpha)
+void X11FrameBufferEmulation::Present()
 {
-	mWidth = pWidth;
-	mHeight = pHeight;
-	mStride = pStride;
-	mHasAlpha = pHasAlpha;
-	mPreMultipliedAlpha = pPreMultipliedAlpha;
-	mPixels.resize(mHeight * mStride);
-}
+	// The message pump had to be moved to the same thread as the rendering because otherwise it would fail after a little bit of time.
+	// This is dispite what the documentation stated.
+	while( XPending(mDisplay) )
+	{
+		XEvent e;
+		XNextEvent(mDisplay,&e);
+		switch( e.type )
+		{
+		case Expose:
+			mWindowReady = true;
+			break;
 
-void TinyImage::PreMultiplyAlpha()
-{
-	assert( mPreMultipliedAlpha == false ); // Can't do this more than once!
-	assert( mHasAlpha ); // Has to have alpha data!
-	assert( (mPixels.size()&3) == 0 ); // Must be multiples for four bytes!
+		case ClientMessage:
+			// All of this is to stop and error when we try to use the display but has been disconnected.
+			// Snip from X11 docs.
+			// 	Clients that choose not to include WM_DELETE_WINDOW in the WM_PROTOCOLS property
+			// 	may be disconnected from the server if the user asks for one of the
+			//  client's top-level windows to be deleted.
+			// 
+			// My note, could have been avoided if we just had something like XDisplayStillValid(my display)
+			if (static_cast<Atom>(e.xclient.data.l[0]) == mDeleteMessage)
+			{
+				mWindowReady = false;
+				FrameBuffer::SetKeepGoingFalse();
+			}
+			break;
 
-	uint8_t* pixel = mPixels.data();
-	size_t pixelCount = mPixels.size()/4;
-	mPreMultipliedAlpha = true;
-	while( pixelCount-- )
-	{// More readable that doing it all on one line and generates same code once optimized by complier!
-		const uint32_t R = pixel[0];
-		const uint32_t G = pixel[1];
-		const uint32_t B = pixel[2];
-		const uint32_t A = pixel[3];
+		case KeyPress:
+			// exit on ESC key press
+			if ( e.xkey.keycode == 0x09 )
+			{
+				mWindowReady = false;
+				FrameBuffer::SetKeepGoingFalse();
+			}
+			break;
+		}
+	}
 
-		pixel[0] = (uint8_t)((R * A)/255);
-		pixel[1] = (uint8_t)((G * A)/255);
-		pixel[2] = (uint8_t)((B * A)/255);
-		pixel[3] = 255 - A;
+	if( mWindowReady )
+	{
+		GC defGC = DefaultGC(mDisplay, DefaultScreen(mDisplay));
+		const int ret = XPutImage(mDisplay, mWindow,defGC,mDisplayBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
 
-		pixel += 4;
+		switch (ret)
+		{
+		case BadDrawable:
+			std::cerr << "XPutImage failed BadDrawable\n";
+			break;
+
+		case BadGC:
+			std::cerr << "XPutImage failed BadGC\n";
+			break;
+
+		case BadMatch:
+			std::cerr << "XPutImage failed BadMatch\n";
+			break;
+
+		case BadValue:
+			std::cerr << "XPutImage failed BadValue\n";
+			break;
+
+		default:
+			break;
+		}
 	}
 }
+
+#endif //#ifdef USE_X11_EMULATION
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Font Implementation.
@@ -1364,7 +1550,7 @@ PixelFont::~PixelFont()
 {
 }
 
-void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const
+void PixelFont::DrawChar(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const
 {
 	const uint8_t* charBits = font8x13 + pChar * 13;
 	if( mPixelSize == 1 )
@@ -1382,7 +1568,7 @@ void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t p
 					{
 						if( bits&(1<<bit) )
 						{
-							pDest->DrawRectangle(x-1,pY + y - 1,x+1,pY + y + 1,mBorderColour.r,mBorderColour.g,mBorderColour.b,true);
+							pDest.DrawRectangle(x-1,pY + y - 1,x+1,pY + y + 1,mBorderColour.r,mBorderColour.g,mBorderColour.b,true);
 						}
 					}
 				}
@@ -1400,7 +1586,7 @@ void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t p
 				{
 					if( bits&(1<<bit) )
 					{
-						pDest->WritePixel(x,pY + y,pGreen,pGreen,pBlue);
+						pDest.WritePixel(x,pY + y,pGreen,pGreen,pBlue);
 					}
 				}
 			}
@@ -1422,7 +1608,7 @@ void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t p
 					{
 						if( bits&(1<<bit) )
 						{
-							pDest->DrawRectangle(x-1,by-1,x+mPixelSize+1,by+mPixelSize+1,mBorderColour.r,mBorderColour.g,mBorderColour.b,true);
+							pDest.DrawRectangle(x-1,by-1,x+mPixelSize+1,by+mPixelSize+1,mBorderColour.r,mBorderColour.g,mBorderColour.b,true);
 						}
 					}
 				}
@@ -1440,7 +1626,7 @@ void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t p
 				{
 					if( bits&(1<<bit) )
 					{
-						pDest->DrawRectangle(x,pY,x+mPixelSize,pY+mPixelSize,pGreen,pGreen,pBlue,true);
+						pDest.DrawRectangle(x,pY,x+mPixelSize,pY+mPixelSize,pGreen,pGreen,pBlue,true);
 					}
 				}
 			}
@@ -1449,7 +1635,7 @@ void PixelFont::DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t p
 
 }
 
-void PixelFont::Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const
+void PixelFont::Print(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const
 {
 	while(*pText)
 	{
@@ -1459,7 +1645,7 @@ void PixelFont::Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGre
 	};
 }
 
-void PixelFont::Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const
+void PixelFont::Printf(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const
 {
 	char buf[1024];	
 	va_list args;
@@ -1469,12 +1655,12 @@ void PixelFont::Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGr
 	Print(pDest, pX,pY,pGreen,pGreen,pBlue, buf);
 }
 
-void PixelFont::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const
+void PixelFont::Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const
 {
 	Print(pDest,pX,pY,mPenColour.r,mPenColour.g,mPenColour.b,pText);
 }
 
-void PixelFont::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const
+void PixelFont::Printf(DrawBuffer& pDest,int pX,int pY,const char* pFmt,...)const
 {
 	char buf[1024];	
 	va_list args;
@@ -1586,7 +1772,7 @@ FreeTypeFont::~FreeTypeFont()
 	}
 }
 
-int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const
+int FreeTypeFont::DrawChar(DrawBuffer& pDest,int pX,int pY,char pChar)const
 {
 	if( !mOK )
 		return pX;
@@ -1693,7 +1879,7 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const
 			{
 				const int pixelX = pX + j + x_off;
 				const int pixelY = row_offset;
-				pDest->WritePixel(pixelX,pixelY, mBlended[p].r, mBlended[p].g, mBlended[p].b);
+				pDest.WritePixel(pixelX,pixelY, mBlended[p].r, mBlended[p].g, mBlended[p].b);
 			}
 		}
 	}
@@ -1701,7 +1887,7 @@ int FreeTypeFont::DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const
 	return pX + advance;
 }
 
-void FreeTypeFont::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const
+void FreeTypeFont::Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const
 {
 	while(*pText)
 	{
@@ -1710,7 +1896,7 @@ void FreeTypeFont::Print(FrameBuffer* pDest,int pX,int pY,const char* pText)cons
 	};
 }
 
-void FreeTypeFont::Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const
+void FreeTypeFont::Printf(DrawBuffer& pDest,int pX,int pY,const char* pFmt,...)const
 {
 	char buf[1024];	
 	va_list args;
@@ -1740,7 +1926,7 @@ void FreeTypeFont::RecomputeBlendTable()
 {
 	uint32_t blendTable[256];
 
-	FrameBuffer::TweenColoursRGB(mBackgroundColour.r,mBackgroundColour.g,mBackgroundColour.b,mPenColour.r,mPenColour.g,mPenColour.b,blendTable);
+	TweenColoursRGB(mBackgroundColour.r,mBackgroundColour.g,mBackgroundColour.b,mPenColour.r,mPenColour.g,mPenColour.b,blendTable);
 
 	// Unpack to speed up rendering.
 	for( uint32_t p = 0 ; p < 256 ; p++ )
@@ -1752,190 +1938,6 @@ void FreeTypeFont::RecomputeBlendTable()
 }
 
 #endif //#ifdef USE_FREETYPEFONTS
-
-#ifdef USE_X11_EMULATION
-/**
- * @brief This codebase is expected to be used for a system not running X11. But to aid development there is an option to 'emulate' a frame buffer with an X11 window.
- * 
- */
-X11FrameBufferEmulation::X11FrameBufferEmulation():
-	mDisplay(NULL),
-	mWindow(0),
-	mWindowReady(false),
-	mDisplayBuffer(NULL)
-{
-	memset(&mFixInfo,0,sizeof(mFixInfo));
-	memset(&mVarInfo,0,sizeof(mVarInfo));
-
-}
-
-X11FrameBufferEmulation::~X11FrameBufferEmulation()
-{
-	mWindowReady = false;
-
-	// Do this after we have set the message pump flag to false so the events generated will case XNextEvent to return.
-	XDestroyWindow(mDisplay,mWindow);
-	XCloseDisplay(mDisplay);
-}
-
-bool X11FrameBufferEmulation::Open(bool pVerbose)
-{
-	// Before we do anything do this. So we can run message pump on it's own thread.
-	XInitThreads();
-
-	const struct fb_fix_screeninfo finfo =
-	{
-		"X11",
-		0,
-		X11_EMULATION_WIDTH * X11_EMULATION_HEIGHT * 4,
-		FB_TYPE_PACKED_PIXELS,
-		0,
-		FB_VISUAL_TRUECOLOR,
-		0,0,0,
-		X11_EMULATION_WIDTH*4,
-		0,0,0,0,
-		{0,0}
-	};
-	mFixInfo = finfo;
-
-	mVarInfo.xres = X11_EMULATION_WIDTH;
-	mVarInfo.yres = X11_EMULATION_HEIGHT;
-	mVarInfo.bits_per_pixel = 32;
-
-	mVarInfo.red.offset = 16;
-	mVarInfo.red.length = 8;
-
-	mVarInfo.green.offset = 8;
-	mVarInfo.green.length = 8;
-
-	mVarInfo.blue.offset = 0;
-	mVarInfo.blue.length = 8;
-	
-	mVarInfo.width = X11_EMULATION_WIDTH;
-	mVarInfo.height = X11_EMULATION_HEIGHT;
-
-	mDisplay = XOpenDisplay(NULL);
-	if( mDisplay == NULL )
-	{
-		std::cerr << "Failed to open X display.\n";
-		return false;
-	}
-		
-	mWindow = XCreateSimpleWindow(
-					mDisplay,
-					RootWindow(mDisplay, 0),
-					10, 10,
-					X11_EMULATION_WIDTH, X11_EMULATION_HEIGHT,
-					1,
-					BlackPixel(mDisplay, 0),
-					WhitePixel(mDisplay, 0));
-
-	XSelectInput(mDisplay, mWindow, ExposureMask | KeyPressMask | StructureNotifyMask );
-	XMapWindow(mDisplay, mWindow);
-
-	mDisplayBuffer = (uint8_t*)malloc(mFixInfo.smem_len);
-	memset(mDisplayBuffer,0,mFixInfo.smem_len);
-
-	Visual *visual=DefaultVisual(mDisplay, 0);
-	const int defDepth = DefaultDepth(mDisplay,DefaultScreen(mDisplay));
-	mDisplayBufferImage = XCreateImage(
-							mDisplay,
-							visual,
-							defDepth,
-							ZPixmap,
-							0,
-							(char*)mDisplayBuffer,
-							mVarInfo.width,
-							mVarInfo.height,
-							32,
-							0);
-
-	// So I can exit cleanly if the user uses the close window button.
-	mDeleteMessage = XInternAtom(mDisplay, "WM_DELETE_WINDOW", False);
-	XSetWMProtocols(mDisplay, mWindow, &mDeleteMessage, 1);
-
-	// wait for the expose message.
-  	timespec SleepTime = {0,1000000};
-	while( !mWindowReady )
-	{
-		Present();
-		nanosleep(&SleepTime,NULL);
-	}
-
-	return true;
-}
-
-void X11FrameBufferEmulation::Present()
-{
-	// The message pump had to be moved to the same thread as the rendering because otherwise it would fail after a little bit of time.
-	// This is dispite what the documentation stated.
-	while( XPending(mDisplay) )
-	{
-		XEvent e;
-		XNextEvent(mDisplay,&e);
-		switch( e.type )
-		{
-		case Expose:
-			mWindowReady = true;
-			break;
-
-		case ClientMessage:
-			// All of this is to stop and error when we try to use the display but has been disconnected.
-			// Snip from X11 docs.
-			// 	Clients that choose not to include WM_DELETE_WINDOW in the WM_PROTOCOLS property
-			// 	may be disconnected from the server if the user asks for one of the
-			//  client's top-level windows to be deleted.
-			// 
-			// My note, could have been avoided if we just had something like XDisplayStillValid(my display)
-			if (static_cast<Atom>(e.xclient.data.l[0]) == mDeleteMessage)
-			{
-				mWindowReady = false;
-				FrameBuffer::SetKeepGoingFalse();
-			}
-			break;
-
-		case KeyPress:
-			// exit on ESC key press
-			if ( e.xkey.keycode == 0x09 )
-			{
-				mWindowReady = false;
-				FrameBuffer::SetKeepGoingFalse();
-			}
-			break;
-		}
-	}
-
-	if( mWindowReady )
-	{
-		GC defGC = DefaultGC(mDisplay, DefaultScreen(mDisplay));
-		const int ret = XPutImage(mDisplay, mWindow,defGC,mDisplayBufferImage,0,0,0,0,mVarInfo.width,mVarInfo.height);
-
-		switch (ret)
-		{
-		case BadDrawable:
-			std::cerr << "XPutImage failed BadDrawable\n";
-			break;
-
-		case BadGC:
-			std::cerr << "XPutImage failed BadGC\n";
-			break;
-
-		case BadMatch:
-			std::cerr << "XPutImage failed BadMatch\n";
-			break;
-
-		case BadValue:
-			std::cerr << "XPutImage failed BadValue\n";
-			break;
-
-		default:
-			break;
-		}
-	}
-}
-
-#endif //#ifdef USE_X11_EMULATION
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace tiny2d

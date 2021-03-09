@@ -11,6 +11,8 @@ static uint8_t RED[256];
 static uint8_t GREEN[256];
 static uint8_t BLUE[256];
 
+bool KeepGoing = true;
+
 class Mandelbrot
 {
 public:
@@ -18,28 +20,26 @@ public:
 	{
 	}
 
-	void Update(tiny2d::FrameBuffer* pFB,int pYStart,int pYStep,float pZoom)
+	void Update(tiny2d::DrawBuffer& RT,int pYStart,int pYStep,float pZoom)
 	{
 		float fy = -1 + ((pZoom - 1.0f)*0.2f);
-		const float fyInc = 2.0f / (float)pFB->GetHeight();
-		const float fxInc = 3.5f / (float)pFB->GetWidth();
+		const float fyInc = 2.0f / (float)RT.GetHeight();
+		const float fxInc = 3.5f / (float)RT.GetWidth();
 
 		fy += (fyInc*pYStart);
-		for(int y = pYStart ; y < pFB->GetHeight() && pFB->GetKeepGoing() ;y += pYStep , fy += (fyInc*pYStep))
+		for(int y = pYStart ; y < RT.GetHeight() && KeepGoing ;y += pYStep , fy += (fyInc*pYStep))
 		{
 			float fx = -2.5f + ((pZoom - 1.0f)*0.385f);
 
-			for(int x = 0 ; x < pFB->GetWidth() ;x++ , fx += fxInc)
+			for(int x = 0 ; x < RT.GetWidth() ;x++ , fx += fxInc)
 			{
 				int i =  GetIndex(fx/pZoom,fy/pZoom);
-				pFB->WritePixel(x,y,RED[i],GREEN[i],BLUE[i]);
+				RT.WritePixel(x,y,RED[i],GREEN[i],BLUE[i]);
 			}
 		}
 	}
 
 private:
-
-
 	const int MaxItterartions;
 
 	int GetIndex(float x0,float y0)
@@ -65,38 +65,27 @@ private:
 
 };
 
-tiny2d::FrameBuffer* FB = NULL;
-
-Mandelbrot Cool1;
-Mandelbrot Cool2;
-Mandelbrot Cool3;
-Mandelbrot Cool4;
-
-void MandelbrotMain1(float pZoom)
+void Render(float pZoom,tiny2d::DrawBuffer& RT)
 {
-	Cool1.Update(FB,1,4,pZoom);
-}
+	std::thread thread1 = std::thread([pZoom,&RT](){
+		Mandelbrot Cool;
+		Cool.Update(RT,1,4,pZoom);
+	});
 
-void MandelbrotMain2(float pZoom)
-{
-	Cool2.Update(FB,2,4,pZoom);
-}
+	std::thread thread2 = std::thread([pZoom,&RT](){
+		Mandelbrot Cool;
+		Cool.Update(RT,2,4,pZoom);
+	});
 
-void MandelbrotMain3(float pZoom)
-{
-	Cool3.Update(FB,3,4,pZoom);
+	std::thread thread3 = std::thread([pZoom,&RT](){
+		Mandelbrot Cool;
+		Cool.Update(RT,3,4,pZoom);
+	});
 
-}void MandelbrotMain4(float pZoom)
-{
-	Cool4.Update(FB,4,4,pZoom);
-}
-
-void Render(float pZoom)
-{
-	std::thread thread1 = std::thread(MandelbrotMain1,pZoom);
-	std::thread thread2 = std::thread(MandelbrotMain2,pZoom);
-	std::thread thread3 = std::thread(MandelbrotMain3,pZoom);
-	std::thread thread4 = std::thread(MandelbrotMain4,pZoom);
+	std::thread thread4 = std::thread([pZoom,&RT](){
+		Mandelbrot Cool;
+		Cool.Update(RT,4,4,pZoom);
+	});
 
 	// Wait till all done.
 	thread1.join();
@@ -107,37 +96,35 @@ void Render(float pZoom)
 
 int main(int argc, char *argv[])
 {	
-	FB = tiny2d::FrameBuffer::Open(true);
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 	if( !FB )
 		return 1;
 
 	srand(time(NULL));
 
-	FB->ClearScreen(0,0,0);
+    tiny2d::DrawBuffer RT(FB);
+	RT.Clear(0,0,0);
 
 	// Build colours.
 	for( int i = 0 ; i < 256 ; i++ )
 	{
-		FB->HSV2RGB( (float)i * (360.0f / 255.0f) ,1.0f,1.0f - (float)i / 600.0f,RED[i],GREEN[i],BLUE[i]);		
+		tiny2d::HSV2RGB( (float)i * (360.0f / 255.0f) ,1.0f,1.0f - (float)i / 600.0f,RED[i],GREEN[i],BLUE[i]);		
 	}
 
 	float zoom,zoomstep;
 
 	zoomstep = 1.0f;
 	zoom = 1.0f;
-	while( FB->GetKeepGoing() )
+	while( (KeepGoing = FB->GetKeepGoing()) == true )
 	{
-		Render(zoom);
-		FB->Present();
+		Render(zoom,RT);
+		FB->Present(RT);
 		// Now zoom in a bit.
 		zoom += zoomstep;
 		if( zoomstep < 10.0f )
 			zoomstep += 0.5f;
 	};
 
-	// Stop monitor burn in...
-	FB->ClearScreen(0,0,0);
-	
 	delete FB;
 	return 0;
 }

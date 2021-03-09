@@ -16,54 +16,40 @@ int main(int argc, char *argv[])
 	if( !FB )
 		return EXIT_FAILURE;
 
-	uint8_t col[8][3] = {{0,0,0},{255,0,0},{0,255,0},{0,0,255},{255,255,255},{255,0,255},{255,255,0},{0,255,255}};
-	
+    tiny2d::DrawBuffer RT(FB);
+
 	tiny2d::PixelFont db(3);
     float t = 0.0f;
 	while(FB->GetKeepGoing())
 	{
-    	FB->ClearScreen(0,0,0);
+    	RT.Clear(0,0,0);
         
         int r = (int)((std::sin(t) * 120.0f)+80.0f);// Test negative radius and radius*2 > than width / height...
 
-        FB->DrawRoundedRectangle(900,100,1000,400,r,255,0,255,true);
-        FB->DrawRoundedRectangle(100,450,900,550,r,255,0,255,true);
+        RT.DrawRoundedRectangle(900,100,1000,400,r,255,0,255,true);
+        RT.DrawRoundedRectangle(100,450,900,550,r,255,0,255,true);
 
-        FB->DrawRoundedRectangle(920,120,980,380,r,255,255,255,false);
-        FB->DrawRoundedRectangle(120,470,880,530,r,255,255,255,false);
+        RT.DrawRoundedRectangle(920,120,980,380,r,255,255,255,false);
+        RT.DrawRoundedRectangle(120,470,880,530,r,255,255,255,false);
 
-        FB->DrawRectangle(100-4,100-4,400+4,400+4,55,55,55,true);
-        FB->DrawRectangle(500-4,100-4,800+4,400+4,55,55,55,true);
+        RT.DrawRectangle(100-4,100-4,400+4,400+4,55,55,55,true);
+        RT.DrawRectangle(500-4,100-4,800+4,400+4,55,55,55,true);
 
-        FB->DrawRoundedRectangle(100,100,400,400,r,255,255,255,true);
-        FB->DrawRoundedRectangle(500,100,800,400,r,255,255,255,false);
+        RT.DrawRoundedRectangle(100,100,400,400,r,255,255,255,true);
+        RT.DrawRoundedRectangle(500,100,800,400,r,255,255,255,false);
 
-		FB->DrawRoundedRectangle(-40,50,50,400,30,-1,-1,-1,true);
+		RT.DrawRoundedRectangle(-40,50,50,400,30,-1,-1,-1,true);
 
-		FB->DrawRoundedRectangle(0,560,1024,700,30,255,100,30,true);
+		RT.DrawRoundedRectangle(0,560,1024,700,30,255,100,30,true);
         
-        if(false)
-		{
-			int FromX = rand()%FB->GetWidth();
-			int FromY = rand()%FB->GetHeight();
-			int ToX = rand()%FB->GetWidth();
-			int ToY = rand()%FB->GetHeight();
-
-			int c = rand()&7;
-
-			FB->DrawRectangle(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
-		}
 
         t += 0.01f;
         if( t > radian ) t-= radian;
 
-		db.Printf(FB,0,0,"%f",t);
+		db.Printf(RT,0,0,"%f",t);
 
-		FB->Present();
+		FB->Present(RT);
 	}
-
-	// Stop monitor burn in...
-	FB->ClearScreen(0,0,0);	
 
 	delete FB;
 

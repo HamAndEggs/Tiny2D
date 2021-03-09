@@ -35,28 +35,24 @@ int main(int argc, char *argv[])
 	if( !FB )
 		return EXIT_FAILURE;
 
-
-	FB->ClearScreen(150,150,150);
+    tiny2d::DrawBuffer RT(FB);
+	RT.Clear(150,150,150);
 
 	tiny2d::PixelFont TheFont(3);
 
     int n = 0;
 	while(FB->GetKeepGoing())
 	{
-        FB->ClearScreen(150,150,150);
+        RT.Clear(150,150,150);
 
-        FB->DrawRectangle(100,50,200,150,255,255,255);
+        RT.DrawRectangle(100,50,200,150,255,255,255);
+        RT.DrawGradient(0,200,RT.GetWidth(),500,255,128,64,0,255,128);
+        RT.DrawRectangle(300,300,400,400,255,0,0,true);
+        RT.DrawRectangle(500,300,600,400,0,255,0,true);
+        RT.DrawRectangle(700,300,800,400,0,0,255,true);
 
-        FB->DrawGradient(0,200,FB->GetWidth(),500,255,128,64,0,255,128);
-
-        FB->DrawRectangle(300,300,400,400,255,0,0,true);
-        FB->DrawRectangle(500,300,600,400,0,255,0,true);
-        FB->DrawRectangle(700,300,800,400,0,0,255,true);
-
-
-
-		TheFont.Printf(FB,0,0,"Counting %d",n++);
-        FB->Present();
+		TheFont.Printf(RT,0,0,"Counting %d",n++);
+        FB->Present(RT);
     };
 
     delete FB;
