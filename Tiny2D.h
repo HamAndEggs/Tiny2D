@@ -64,11 +64,15 @@ typedef uint32_t PixelColour;
 #define PIXEL_COLOUR_GREEN(COLOUR__)	( (uint8_t)((COLOUR__&0x0000ff00)>>8) )
 #define PIXEL_COLOUR_BLUE(COLOUR__)		( (uint8_t)(COLOUR__&0x000000ff) )
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 /**
- * @brief Simple image container, if I don't write one everyone else will. :)
- * If you need more, then time to fork and play. :)
+ * @brief This is the main off screen drawing / image buffer.
+ * This can be used to simply hold an image as well as creating new images from primitive calls.
+ * This images can then be presented to the display buffer for viewing by the user.
+ * This is the object that most of your interations will be with.
  */
-struct TinyImage
+struct DrawBuffer
 {
 	// For simplicity and flexibility all visable and modifiable. So don't be daft. :) 
 	std::vector<uint8_t> mPixels;
@@ -81,100 +85,28 @@ struct TinyImage
 	/**
 	 * @brief Construct a new Tiny Image object
 	 */
-	TinyImage(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+	DrawBuffer(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
 
 	/**
 	 * @brief Construct a new Tiny Image object assumes stride is width * height * 3 or 4 bytes based on alpha.
 	 */
-	TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+	DrawBuffer(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
 
 	/**
 	 * @brief Default empty constructor
 	 */
-	TinyImage();
+	DrawBuffer();
 
 	/**
 	 * @brief Resets the image into a new different size / format.
 	 * Expect image pixels to vanish after calling. If they don't, it's luck!
+	 * Does NOT scale the image!
 	 */
 	void Resize(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
 	void Resize(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false)
 	{
 		Resize(pWidth,pHeight,pWidth * (pHasAlpha?4:3),pHasAlpha,pPreMultipliedAlpha);
 	}
-
-	/**
-	 * @brief Makes the pixels pre multiplied, sets RGB to RGB*A then inverts A.
- 	 * Speeds up rending when alpha is not being modified from (S*A) + (D*(1-A)) to S + (D*A)
- 	 * For a simple 2D rendering system that's built for portablity that is an easy speed up.
- 	 * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
-	 */
-	void PreMultiplyAlpha();
-};
-
-struct X11FrameBufferEmulation;
-/**
- * @brief Represents the linux frame buffer display.
- * Is able to deal with and abstract out the various pixel formats. 
- * For a simple 2D rendering system that's built for portablity that is an easy speed up.
- * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
- */
-class FrameBuffer
-{
-public:
-
-	/**
-	 * @brief Creates and opens a FrameBuffer object.
-	 * If the OS does not support the frame buffer driver or there is some other error,
-	 * this function will return NULL.
-	 * For simplicity all drawing is done at eight bits per channel to an off screen bufffer.
-	 * This makes the code very simple as the colour space conversion is only done when the
-	 * offscreen buffer is copied to the display.
-	 * 
-	 * @param pVerbose get debugging information as the object is created.
-	 * @return FrameBuffer* 
-	 */
-	static FrameBuffer* Open(bool pVerbose = false);
-
-	~FrameBuffer();
-
-	/**
-	 * @brief Get the setting for Verbose debug output.
-	 * 
-	 * @return true 
-	 * @return false 
-	 */
-	bool GetVerbose()const{return mVerbose;}
-
-	/*
-		Returns the width of the frame buffer.
-	*/
-	int GetWidth()const{return mWidth;}
-
-	/*
-		Returns the height of the frame buffer.
-	*/
-	int GetHeight()const{return mHeight;}
-
-	/**
-	 * @brief See if the app main loop should keep going.
-	 * 
-	 * @return true All is ok, so keep running.
-	 * @return false Either the user requested an exit with ctrl+c or there was an error.
-	 */
-	bool GetKeepGoing()const{return FrameBuffer::mKeepGoing;}
-
-	/**
-	 * @brief Sets the flag for the main loop to false.
-	 * You can only set it to false to prevet miss uses.
-	 */
-	static void SetKeepGoingFalse(){FrameBuffer::mKeepGoing = false;}
-
-	/**
-	 * @brief Depending on the buffering mode and the render environment will display the changes to the frame buffer on screen.
-	 * 
-	 */
-	void Present();
 
 	/**
 	 * @brief Writes a single pixel with the passed red, green and blue values. 0 -> 255, 0 being off 255 being full on.
@@ -228,7 +160,7 @@ public:
 	 * @param pGreen 
 	 * @param pBlue 
 	 */
-	void ClearScreen(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+	void Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
 	/**
 	 * @brief Clears the entire screen.
@@ -237,7 +169,7 @@ public:
 	 */
 	void ClearScreen(PixelColour pColour)
 	{
-		ClearScreen(PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
+		Clear(PIXEL_COLOUR_RED(pColour),PIXEL_COLOUR_GREEN(pColour),PIXEL_COLOUR_BLUE(pColour));
 	}
 
 	/* 
@@ -540,29 +472,80 @@ public:
 	 * @param rBlendTable 
 	 */
 	static void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
-
+	
 	/**
-	 * @brief Makes pixels pre multiplied, sets RGB to RGB*A then inverts A.
- 	 * Expects source to be 32bit, four 8 bit bytes in R G B A order.
- 	 * IE pSourcePixels[0] is red, pSourcePixels[1] is green, pSourcePixels[2] is blue and pSourcePixels[3] is alpha.		
+	 * @brief Makes the pixels pre multiplied, sets RGB to RGB*A then inverts A.
  	 * Speeds up rending when alpha is not being modified from (S*A) + (D*(1-A)) to S + (D*A)
  	 * For a simple 2D rendering system that's built for portablity that is an easy speed up.
  	 * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
-	 * 
-	 * @param pRGBA 
-	 * @param pPixelCount
 	 */
-	static void PreMultiplyAlphaChannel(uint8_t* pRGBA, int pPixelCount);
+	void PreMultiplyAlpha();
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+struct X11FrameBufferEmulation;
+/**
+ * @brief Represents the linux frame buffer display.
+ * Is able to deal with and abstract out the various pixel formats. 
+ * For a simple 2D rendering system that's built for portablity that is an easy speed up.
+ * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
+ */
+class FrameBuffer
+{
+public:
 
 	/**
-	 * @brief Makes pixels pre multiplied, sets RGB to RGB*A then inverts A.
-	 * Handy wrapper.
-	 * @param pRGBA 
+	 * @brief Creates and opens a FrameBuffer object.
+	 * If the OS does not support the frame buffer driver or there is some other error,
+	 * this function will return NULL.
+	 * For simplicity all drawing is done at eight bits per channel to an off screen bufffer.
+	 * This makes the code very simple as the colour space conversion is only done when the
+	 * offscreen buffer is copied to the display.
+	 * 
+	 * @param pVerbose get debugging information as the object is created.
+	 * @return FrameBuffer* 
 	 */
-	static void PreMultiplyAlphaChannel(std::vector<uint8_t>& pRGBA)
-	{
-		PreMultiplyAlphaChannel(pRGBA.data(),pRGBA.size()/4);
-	}
+	static FrameBuffer* Open(bool pVerbose = false);
+
+	~FrameBuffer();
+
+	/**
+	 * @brief Get the setting for Verbose debug output.
+	 * 
+	 * @return true 
+	 * @return false 
+	 */
+	bool GetVerbose()const{return mVerbose;}
+
+	/*
+		Returns the width of the frame buffer.
+	*/
+	int GetWidth()const{return mWidth;}
+
+	/*
+		Returns the height of the frame buffer.
+	*/
+	int GetHeight()const{return mHeight;}
+
+	/**
+	 * @brief See if the app main loop should keep going.
+	 * 
+	 * @return true All is ok, so keep running.
+	 * @return false Either the user requested an exit with ctrl+c or there was an error.
+	 */
+	bool GetKeepGoing()const{return FrameBuffer::mKeepGoing;}
+
+	/**
+	 * @brief Sets the flag for the main loop to false.
+	 * You can only set it to false to prevet miss uses.
+	 */
+	static void SetKeepGoingFalse(){FrameBuffer::mKeepGoing = false;}
+
+	/**
+	 * @brief Depending on the buffering mode and the render environment will display the changes to the frame buffer on screen.
+	 * 
+	 */
+	void Present(const DrawBuffer& pImage);
 
 private:
 	/**
@@ -590,12 +573,6 @@ private:
 	static void CtrlHandler(int SigNum);
 
 	const int mWidth,mHeight;
-
-	// We always render to the frame buffer, do the conversion to the display buffer format when the image is presented.
-	// This makes the drawing code a lot simpler and easier to maintain.
-	const int mDrawBufferStride;		// Num bytes between each line.
-	const int mDrawBufferSize;
-	uint8_t* mDrawBuffer;
 
 	const int mDisplayBufferStride;		// Num bytes between each line.
 	const int mDisplayBufferPixelSize;	// The byte count of each pixel. So to move in the x by one pixel.
