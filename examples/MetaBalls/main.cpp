@@ -102,7 +102,7 @@ void RenderScanLine(tiny2d::DrawBuffer& RT,int pFromY,int pToY,const std::vector
 				TotalDist += ball.GetMeta(x,y);
 
 			uint8_t c = (uint8_t)(std::min(255,(int)(TotalDist*3000)));
-			RT.DrawRectangle(x,y,x+PixelSize,y+PixelSize,RED[c],GREEN[c],BLUE[c],true);
+			RT.FillRectangle(x,y,x+PixelSize,y+PixelSize,RED[c],GREEN[c],BLUE[c]);
 		}
 	}
 }

@@ -59,7 +59,10 @@ int main(int argc, char *argv[])
 
 			int c = rand()&7;
 
-			RT.DrawRectangle(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
+			if( (rand()&1) == 0 )
+				RT.DrawRectangle(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2]);
+			else
+				RT.FillRectangle(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2]);
 		}
 
 		{
@@ -71,22 +74,25 @@ int main(int argc, char *argv[])
 			int c = rand()&7;
 			int r = 5 + (rand()&15);
 
-			RT.DrawRoundedRectangle(FromX,FromY,ToX,ToY,r,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
+			if( (rand()&1) == 0 )
+				RT.DrawRoundedRectangle(FromX,FromY,ToX,ToY,r,col[c][0],col[c][1],col[c][2]);
+			else
+				RT.FillRoundedRectangle(FromX,FromY,ToX,ToY,r,col[c][0],col[c][1],col[c][2]);
 		}
 
-		RT.DrawRectangle(200,20,600,220,0,0,0,true);
-		RT.DrawRectangle(220,40,580,200,0,255,0,true);
-		RT.DrawRectangle(230,50,570,190,255,0,255,false);
+		RT.FillRectangle(200,20,600,220,0,0,0);
+		RT.FillRectangle(220,40,580,200,0,255,0);
+		RT.DrawRectangle(230,50,570,190,255,0,255);
 
-		RT.DrawRoundedRectangle(200,320,600,520,20,0,0,0,true);
-		RT.DrawRoundedRectangle(220,340,580,500,20,0,255,0,true);
-		RT.DrawRoundedRectangle(230,350,570,490,20,255,0,255,false);
+		RT.FillRoundedRectangle(200,320,600,520,20,0,0,0);
+		RT.FillRoundedRectangle(220,340,580,500,20,0,255,0);
+		RT.DrawRoundedRectangle(230,350,570,490,20,255,0,255);
 
 		{
 			int cX = (int)(70.0f + ((RT.mWidth-130.0f) * anim));
-			RT.DrawCircle(cX,90,50,0,0,0,true);
-			RT.DrawCircle(cX,90,40,255,0,0,true);
-			RT.DrawCircle(cX,90,30,0,0,255,false);
+			RT.FillCircle(cX,90,50,0,0,0);
+			RT.FillCircle(cX,90,40,255,0,0);
+			RT.DrawCircle(cX,90,30,0,0,255);
 		}
 
 		Font.Print(RT,100,100,"This is a simple pixel font!");

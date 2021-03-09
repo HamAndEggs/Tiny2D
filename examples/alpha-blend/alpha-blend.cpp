@@ -75,9 +75,9 @@ int main(int argc, char *argv[])
                     const int rY = (y * 10) + (RT.GetHeight()/2) - 160;
 
                     if( (x&1) == (y&1) )
-                        RT.DrawRectangle(rX,rY,rX+10,rY+10,255,255,255,true);
+                        RT.FillRectangle(rX,rY,rX+10,rY+10,255,255,255);
                     else
-                        RT.DrawRectangle(rX,rY,rX+10,rY+10,0,0,0,true);
+                        RT.FillRectangle(rX,rY,rX+10,rY+10,0,0,0);
                 }
 
                 {
@@ -85,9 +85,9 @@ int main(int argc, char *argv[])
                     const int rY = (y * 10) + (RT.GetHeight()/2) - 160;
 
                     if( (x&1) == (y&1) )
-                        RT.DrawRectangle(rX,rY,rX+10,rY+10,255,255,255,true);
+                        RT.FillRectangle(rX,rY,rX+10,rY+10,255,255,255);
                     else
-                        RT.DrawRectangle(rX,rY,rX+10,rY+10,0,0,0,true);
+                        RT.FillRectangle(rX,rY,rX+10,rY+10,0,0,0);
                 }
             }
         }
