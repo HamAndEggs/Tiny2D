@@ -19,8 +19,10 @@
 
 #include <vector>
 
+#include <assert.h>
 #include <signal.h>
 #include <stdint.h>
+
 #include <linux/fb.h>
 
 /**
@@ -60,10 +62,44 @@ typedef uint32_t PixelColour;
 #define PIXEL_COLOUR_GREEN(COLOUR__)	( (uint8_t)((COLOUR__&0x0000ff00)>>8) )
 #define PIXEL_COLOUR_BLUE(COLOUR__)		( (uint8_t)(COLOUR__&0x000000ff) )
 
+/**
+ * @brief Simple image container, if I don't write one everyone else will. :)
+ * If you need more, then time to fork and play. :)
+ */
+struct TinyImage
+{
+	std::vector<uint8_t> mPixels;
+	const uint32_t mWidth;
+	const uint32_t mHeight;
+	const uint32_t mStride;
+	const bool mHasAlpha;
+	bool mPreMultipliedAlpha;
+
+	/**
+	 * @brief Construct a new Tiny Image object
+	 */
+	TinyImage(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Construct a new Tiny Image object assumes stride is width * height * 3 or 4 bytes based on alpha.
+	 */
+	TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Makes the pixels pre multiplied, sets RGB to RGB*A then inverts A.
+ 	 * Speeds up rending when alpha is not being modified from (S*A) + (D*(1-A)) to S + (D*A)
+ 	 * For a simple 2D rendering system that's built for portablity that is an easy speed up.
+ 	 * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
+	 */
+	void PreMultiplyAlpha();
+};
+
 struct X11FrameBufferEmulation;
 /**
  * @brief Represents the linux frame buffer display.
  * Is able to deal with and abstract out the various pixel formats. 
+ * For a simple 2D rendering system that's built for portablity that is an easy speed up.
+ * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
  */
 class FrameBuffer
 {
@@ -234,6 +270,15 @@ public:
 	 * @param pPreMultipliedAlpha 
 	 */
 	void BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,int pHeight,int pSourceX,int pSourceY,int pSourceStride,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Draws the entire image to the draw buffer.
+	 * 
+	 * @param pImage 
+	 * @param pX 
+	 * @param pY 
+	 */
+	void Blit(const TinyImage& pImage,int pX,int pY);
 
 	/**
 	 * @brief Draws a horizontal line.

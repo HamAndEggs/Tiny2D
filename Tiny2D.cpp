@@ -444,6 +444,19 @@ void FrameBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth
 	}
 }
 
+void FrameBuffer::Blit(const TinyImage& pImage,int pX,int pY)
+{
+	if( pImage.mHasAlpha )
+	{
+		BlitRGBA(pImage.mPixels.data(),pX,pY,pImage.mWidth,pImage.mHeight,0,0,pImage.mStride,pImage.mPreMultipliedAlpha);
+	}
+	else
+	{
+		BlitRGB(pImage.mPixels.data(),pX,pY,pImage.mWidth,pImage.mHeight,0,0,pImage.mStride);
+	}	
+}
+
+
 void FrameBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 {
 	if( pFromY < 0 || pFromY >= mHeight )
@@ -1003,7 +1016,53 @@ void FrameBuffer::CtrlHandler(int SigNum)
 	std::cout << '\n'; // without this the command prompt may be at the end of the ^C char.
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// TinyImage Implementation.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha,bool pPreMultipliedAlpha) :
+	mWidth(pWidth),
+	mHeight(pHeight),
+	mStride(pStride),
+	mHasAlpha(pHasAlpha),
+	mPreMultipliedAlpha(pPreMultipliedAlpha)
+{
+	mPixels.resize(mHeight * mStride);
+}
 
+TinyImage::TinyImage(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha,bool pPreMultipliedAlpha) :
+	mWidth(pWidth),
+	mHeight(pHeight),
+	mStride(mWidth * (pHasAlpha?4:3)),
+	mHasAlpha(pHasAlpha),
+	mPreMultipliedAlpha(pPreMultipliedAlpha)
+{
+	mPixels.resize(mHeight * mStride);
+}
+
+void TinyImage::PreMultiplyAlpha()
+{
+	assert( mPreMultipliedAlpha == false ); // Can't do this more than once!
+	assert( mHasAlpha ); // Has to have alpha data!
+	assert( (mPixels.size()&3) == 0 ); // Must be multiples for four bytes!
+
+	uint8_t* pixel = mPixels.data();
+	size_t pixelCount = mPixels.size()/4;
+	mPreMultipliedAlpha = true;
+	while( pixelCount-- )
+	{// More readable that doing it all on one line and generates same code once optimized by complier!
+		const uint32_t R = pixel[0];
+		const uint32_t G = pixel[1];
+		const uint32_t B = pixel[2];
+		const uint32_t A = pixel[3];
+
+		pixel[0] = (uint8_t)((R * A)/255);
+		pixel[1] = (uint8_t)((G * A)/255);
+		pixel[2] = (uint8_t)((B * A)/255);
+		pixel[3] = 255 - A;
+
+		pixel += 4;
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Font Implementation.
