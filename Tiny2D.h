@@ -29,7 +29,9 @@
  * @brief define USE_X11_EMULATION for a system running X11.
  * This codebase is targeting systems without X11, but sometimes we want to develop on a system with it.
  * This define allows that. But is expected to be used ONLY for development.
- * To set window draw size define X11_EMULATION_WIDTH and X11_EMULATION_HEIGHT
+ * To set window draw size define X11_EMULATION_WIDTH and X11_EMULATION_HEIGHT in your build settings.
+ * These below are here for default behaviour.
+ * Doing this saves on params that are not needed 99% of the time.
  */
 #ifdef USE_X11_EMULATION
 	#ifndef X11_EMULATION_WIDTH
