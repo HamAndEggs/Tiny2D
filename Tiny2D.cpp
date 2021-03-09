@@ -288,6 +288,12 @@ void DrawBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
 		dst[0] = (uint8_t)( sR + dR );
 		dst[1] = (uint8_t)( sG + dG );
 		dst[2] = (uint8_t)( sB + dB );
+
+		// If dest has alpha, we need to pic the max value. Blending will just make everything vanish.
+		if( mHasAlpha && dst[3] < sA )
+		{
+			dst[3] = sA;
+		}
 	}
 }
 
@@ -322,6 +328,8 @@ void DrawBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
 		dst[0] = (uint8_t)( sR + dR );
 		dst[1] = (uint8_t)( sG + dG );
 		dst[2] = (uint8_t)( sB + dB );
+
+		// For pre calculated alpha there is no good choice for combining the source and dest alpha. So we just ignore it.
 	}
 }
 
@@ -335,6 +343,18 @@ void DrawBuffer::Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
 			dest[0] = pRed;
 			dest[1] = pGreen;
 			dest[2] = pBlue;
+		}
+	}
+
+	if( mHasAlpha )
+	{
+		uint8_t *dest = mPixels.data();
+		for( int y = 0 ; y < mHeight ; y++ )
+		{
+			for( int x = 0 ; x < mWidth ; x++, dest += 3 )
+			{
+				dest[3] = 255;
+			}
 		}
 	}
 }
