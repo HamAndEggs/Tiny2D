@@ -29,25 +29,25 @@ public:
 		delete []mText;
 	}
 
-	void Render(tiny2d::FrameBuffer* pDest,const tiny2d::PixelFont& pFont,bool pPressed)
+	void Render(tiny2d::DrawBuffer& pRT,const tiny2d::PixelFont& pFont,bool pPressed)
 	{
-		pDest->DrawRectangle(mRect.FromX,mRect.FromY,mRect.ToX,mRect.ToY,mFillColour.r,mFillColour.g,mFillColour.b,true);
+		pRT.DrawRectangle(mRect.FromX,mRect.FromY,mRect.ToX,mRect.ToY,mFillColour.r,mFillColour.g,mFillColour.b,true);
 	
 		if( pPressed )
 		{
-			pDest->DrawLineH(mRect.FromX,mRect.FromY,mRect.ToX,mDarkColour.r,mDarkColour.g,mDarkColour.b);
-			pDest->DrawLineV(mRect.FromX,mRect.FromY,mRect.ToY,mDarkColour.r,mDarkColour.g,mDarkColour.b);
+			pRT.DrawLineH(mRect.FromX,mRect.FromY,mRect.ToX,mDarkColour.r,mDarkColour.g,mDarkColour.b);
+			pRT.DrawLineV(mRect.FromX,mRect.FromY,mRect.ToY,mDarkColour.r,mDarkColour.g,mDarkColour.b);
 	
-			pDest->DrawLineH(mRect.FromX,mRect.ToY,mRect.ToX,mLightColour.r,mLightColour.g,mLightColour.b);
-			pDest->DrawLineV(mRect.ToX,mRect.FromY,mRect.ToY,mLightColour.r,mLightColour.g,mLightColour.b);
+			pRT.DrawLineH(mRect.FromX,mRect.ToY,mRect.ToX,mLightColour.r,mLightColour.g,mLightColour.b);
+			pRT.DrawLineV(mRect.ToX,mRect.FromY,mRect.ToY,mLightColour.r,mLightColour.g,mLightColour.b);
 		}
 		else
 		{
-			pDest->DrawLineH(mRect.FromX,mRect.FromY,mRect.ToX,mLightColour.r,mLightColour.g,mLightColour.b);
-			pDest->DrawLineV(mRect.FromX,mRect.FromY,mRect.ToY,mLightColour.r,mLightColour.g,mLightColour.b);
+			pRT.DrawLineH(mRect.FromX,mRect.FromY,mRect.ToX,mLightColour.r,mLightColour.g,mLightColour.b);
+			pRT.DrawLineV(mRect.FromX,mRect.FromY,mRect.ToY,mLightColour.r,mLightColour.g,mLightColour.b);
 	
-			pDest->DrawLineH(mRect.FromX,mRect.ToY,mRect.ToX,mDarkColour.r,mDarkColour.g,mDarkColour.b);
-			pDest->DrawLineV(mRect.ToX,mRect.FromY,mRect.ToY,mDarkColour.r,mDarkColour.g,mDarkColour.b);
+			pRT.DrawLineH(mRect.FromX,mRect.ToY,mRect.ToX,mDarkColour.r,mDarkColour.g,mDarkColour.b);
+			pRT.DrawLineV(mRect.ToX,mRect.FromY,mRect.ToY,mDarkColour.r,mDarkColour.g,mDarkColour.b);
 		}
 	
 		if(mText)
@@ -61,9 +61,9 @@ public:
 			y -= 13/2;
 	
 			if( pPressed )
-				pFont.Print(pDest,x,y,mTextPressedColour.r,mTextPressedColour.g,mTextPressedColour.b,mText);
+				pFont.Print(pRT,x,y,mTextPressedColour.r,mTextPressedColour.g,mTextPressedColour.b,mText);
 			else
-				pFont.Print(pDest,x,y,mTextColour.r,mTextColour.g,mTextColour.b,mText);
+				pFont.Print(pRT,x,y,mTextColour.r,mTextColour.g,mTextColour.b,mText);
 		}
 	}
 	
@@ -158,11 +158,13 @@ int main(int argc, char *argv[])
 	if( !FB )
 		return 1;
 
+    tiny2d::DrawBuffer RT(FB);
+	RT.Clear(150,150,150);
+
 	srand(time(NULL));
 
 //	uint8_t col[8][3] = {{0,0,0},{255,0,0},{0,255,0},{0,0,255},{255,255,255},{255,0,255},{255,255,0},{0,255,255}};
 
-	FB->ClearScreen(150,150,150);
 
 	tiny2d::PixelFont TheFont(3);
 	Button TheButton(100,100,150,50,"This is a button");
@@ -177,19 +179,19 @@ int main(int argc, char *argv[])
 	{
 		if( ((n)>>4) != ((n-1)>>4) )
 		{
-			FB->DrawRectangle(9*8*5,0,19*8*5,13*5,150,150,150,true);
+			RT.DrawRectangle(9*8*5,0,19*8*5,13*5,150,150,150,true);
 			TheFont.SetPixelSize(5);
-			TheFont.Printf(FB,0,0,"Counting %d",n>>4);
+			TheFont.Printf(RT,0,0,"Counting %d",n>>4);
 		}
 
 		TheFont.SetPixelSize(1);
 		if( (((n-1)%150)&128) != ((n%150)&128) )// Only draw when it changes to stop flicker. This is a simple frame buffer lib. If you want offscreen buffers and high speed, use SDL.
 		{
-			TheButton.Render(FB,TheFont,((n%150)&128) != 0);
-			GreenButton.Render(FB,TheFont,((n%150)&128) != 0);
+			TheButton.Render(RT,TheFont,((n%150)&128) != 0);
+			GreenButton.Render(RT,TheFont,((n%150)&128) != 0);
 		}
 		
-		FB->Present();
+		FB->Present(RT);
 		n++;
 		nanosleep(&SleepTime,NULL);
 	};

@@ -103,7 +103,7 @@ METHODDEF(void) my_error_exit (j_common_ptr cinfo)
 * Sample routine for JPEG decompression.  We assume that the source file name
 * is passed in.  We want to return 1 on success, 0 on error.
 */
-GLOBAL(int) read_JPEG_file (char *filename,tiny2d::FrameBuffer* FB)
+GLOBAL(int) read_JPEG_file (char *filename,tiny2d::DrawBuffer& pImage)
 {	
 	/* This struct contains the JPEG decompression parameters and pointers to
 	* working space (which is allocated as needed by the JPEG library).
@@ -202,8 +202,8 @@ GLOBAL(int) read_JPEG_file (char *filename,tiny2d::FrameBuffer* FB)
 		memcpy(dst,buffer[0],cinfo.output_width * 3);
 	}
 
-	FB->ClearScreen(255,255,255);
-	FB->BlitRGB(image,(FB->GetWidth()/2) - (cinfo.output_width/2),(FB->GetHeight()/2) - (cinfo.output_height/2),cinfo.output_width,cinfo.output_height);
+	pImage.Clear(255,255,255);
+	pImage.BlitRGB(image,(pImage.GetWidth()/2) - (cinfo.output_width/2),(pImage.GetHeight()/2) - (cinfo.output_height/2),cinfo.output_width,cinfo.output_height);
 	
 	delete image;	
 	
@@ -241,8 +241,10 @@ int main(int argc, char *argv[])
 		tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
 		if( FB )
 		{
-			read_JPEG_file(argv[1],FB);
-			FB->Present();
+		    tiny2d::DrawBuffer RT(FB);
+
+			read_JPEG_file(argv[1],RT);
+			FB->Present(RT);
 
 #ifdef USE_X11_EMULATION
 	sleep(5);

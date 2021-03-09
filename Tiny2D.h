@@ -64,7 +64,36 @@ typedef uint32_t PixelColour;
 #define PIXEL_COLOUR_GREEN(COLOUR__)	( (uint8_t)((COLOUR__&0x0000ff00)>>8) )
 #define PIXEL_COLOUR_BLUE(COLOUR__)		( (uint8_t)(COLOUR__&0x000000ff) )
 
+
+/**
+ * @brief Convert RGB to HSV
+ * Very handy for creating colour palettes.
+ * See:- (thanks David H)
+ * 	https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+ */
+extern void RGB2HSV(uint8_t pRed,uint8_t pGreen, uint8_t pBlue,float& rH,float& rS, float& rV);
+
+/**
+ * @brief Convert HSV to RGB
+ * Very handy for creating colour palettes.
+ * See:- (thanks David H)
+ * 	https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
+ */
+extern void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue);
+
+/**
+ * @brief This uses RGB space as input and output but does the belending in the HSV space.
+ * This creates the best tweening of colours for palettes and graduations.
+ */
+extern void TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
+
+/**
+ * @brief By using the RGB space this creates an accurate reproduction of the 'alpha blend' operation.
+ */
+extern void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
+	
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+class FrameBuffer;
 
 /**
  * @brief This is the main off screen drawing / image buffer.
@@ -72,40 +101,57 @@ typedef uint32_t PixelColour;
  * This images can then be presented to the display buffer for viewing by the user.
  * This is the object that most of your interations will be with.
  */
-struct DrawBuffer
+class DrawBuffer
 {
+public:
 	// For simplicity and flexibility all visable and modifiable. So don't be daft. :) 
 	std::vector<uint8_t> mPixels;
-	uint32_t mWidth;
-	uint32_t mHeight;
-	uint32_t mStride;
+	int mWidth;
+	int mHeight;
+	size_t mPixelSize;	//!< The number of bytes per pixel.
+	size_t mStride;	//!< The number of bytes per scan line.
 	bool mHasAlpha;
 	bool mPreMultipliedAlpha;
 
 	/**
 	 * @brief Construct a new Tiny Image object
 	 */
-	DrawBuffer(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+	DrawBuffer(int pWidth, int pHeight, size_t pPixelSize,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
 
 	/**
 	 * @brief Construct a new Tiny Image object assumes stride is width * height * 3 or 4 bytes based on alpha.
 	 */
-	DrawBuffer(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+	DrawBuffer(int pWidth, int pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+
+	/**
+	 * @brief Construct a draw buffer that is suitable for use as a render target.
+	 * 
+	 * @param pFB 
+	 */
+	DrawBuffer(const FrameBuffer* pFB);
 
 	/**
 	 * @brief Default empty constructor
 	 */
 	DrawBuffer();
 
+	int GetWidth()const{return mWidth;}
+	int GetHeight()const{return mHeight;}
+
+	/**
+	 * @brief Get the index of the first byte of the pixel at x,y.
+	 */
+	inline size_t GetPixelIndex(int pX,int pY)const{return (pX * mPixelSize) + (pY * mStride);}
+
 	/**
 	 * @brief Resets the image into a new different size / format.
 	 * Expect image pixels to vanish after calling. If they don't, it's luck!
 	 * Does NOT scale the image!
 	 */
-	void Resize(uint32_t pWidth, uint32_t pHeight, uint32_t pStride,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
-	void Resize(uint32_t pWidth, uint32_t pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false)
+	void Resize(int pWidth, int pHeight,size_t pPixelSize,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
+	void Resize(int pWidth, int pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false)
 	{
-		Resize(pWidth,pHeight,pWidth * (pHasAlpha?4:3),pHasAlpha,pPreMultipliedAlpha);
+		Resize(pWidth,pHeight,pHasAlpha?4:3,pHasAlpha,pPreMultipliedAlpha);
 	}
 
 	/**
@@ -228,7 +274,7 @@ struct DrawBuffer
 	 * @param pX 
 	 * @param pY 
 	 */
-	void Blit(const TinyImage& pImage,int pX,int pY);
+	void Blit(const DrawBuffer& pImage,int pX,int pY);
 
 	/**
 	 * @brief Draws a horizontal line.
@@ -417,69 +463,21 @@ struct DrawBuffer
 	void DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue);
 
 	/**
-	 * @brief Convert RGB to HSV
-	 * Very handy for creating colour palettes.
-	 * See:- (thanks David H)
-	 * 	https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
-	 * 
-	 * @param pRed 
-	 * @param pGreen 
-	 * @param pBlue 
-	 * @param rH 
-	 * @param rS 
-	 * @param rV 
-	 */
-	static void RGB2HSV(uint8_t pRed,uint8_t pGreen, uint8_t pBlue,float& rH,float& rS, float& rV);
-
-	/**
-	 * @brief Convert HSV to RGB
-	 * Very handy for creating colour palettes.
-	 * See:- (thanks David H)
-	 * 	https://stackoverflow.com/questions/3018313/algorithm-to-convert-rgb-to-hsv-and-hsv-to-rgb-in-range-0-255-for-both
-	 * 
-	 * @param H 
-	 * @param S 
-	 * @param V 
-	 * @param rRed 
-	 * @param rGreen 
-	 * @param rBlue 
-	 */
-	static void HSV2RGB(float H,float S, float V,uint8_t &rRed,uint8_t &rGreen, uint8_t &rBlue);
-
-	/**
-	 * @brief This uses RGB space as input and output but does the belending in the HSV space.
-	 * This creates the best tweening of colours for palettes and graduations.
-	 * 
-	 * @param pFromRed 
-	 * @param pFromGreen 
-	 * @param pFromBlue 
-	 * @param pToRed 
-	 * @param pToGreen 
-	 * @param pToBlue 
-	 * @param rBlendTable 
-	 */
-	static void TweenColoursHSV(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
-
-	/**
-	 * @brief By using the RGB space this creates an accurate reproduction of the 'alpha blend' operation.
-	 * 
-	 * @param pFromRed 
-	 * @param pFromGreen 
-	 * @param pFromBlue 
-	 * @param pToRed 
-	 * @param pToGreen 
-	 * @param pToBlue 
-	 * @param rBlendTable 
-	 */
-	static void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint8_t pToRed,uint8_t pToGreen, uint8_t pToBlue,uint32_t rBlendTable[256]);
-	
-	/**
 	 * @brief Makes the pixels pre multiplied, sets RGB to RGB*A then inverts A.
  	 * Speeds up rending when alpha is not being modified from (S*A) + (D*(1-A)) to S + (D*A)
  	 * For a simple 2D rendering system that's built for portablity that is an easy speed up.
  	 * Tiny2D goal is portablity and small code base. Not and epic SIMD / NEON / GL / DX / Volcan monster. :)
 	 */
 	void PreMultiplyAlpha();
+
+private:
+	/*
+		Draws an arbitrary line.
+		Using Bresenham's line algorithm
+		https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+	*/
+	void DrawLineBresenham(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -558,13 +556,6 @@ private:
 	 */
 	FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
 
-	/*
-		Draws an arbitrary line.
-		Using Bresenham's line algorithm
-		https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-	*/
-	void DrawLineBresenham(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-
 	/**
 	 * @brief Handle ctrl + c event.
 	 * 
@@ -574,10 +565,10 @@ private:
 
 	const int mWidth,mHeight;
 
-	const int mDisplayBufferStride;		// Num bytes between each line.
-	const int mDisplayBufferPixelSize;	// The byte count of each pixel. So to move in the x by one pixel.
+	const size_t mDisplayBufferStride;	// Num bytes between each line.
+	const size_t mDisplayBufferPixelSize;	// The byte count of each pixel. So to move in the x by one pixel.
+	const size_t mDisplayBufferSize;
 	const int mDisplayBufferFile;
-	const int mDisplayBufferSize;
 	uint8_t*  mDisplayBuffer;
 
 	const struct fb_var_screeninfo mVariableScreenInfo;
@@ -614,13 +605,13 @@ public:
 	int GetCharHeight()const{return 13*mPixelSize;}
 
 	// These render with the passed in colour, does not change the pen colour.
-	void DrawChar(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const;
-	void Print(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
-	void Printf(FrameBuffer* pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
+	void DrawChar(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const;
+	void Print(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
+	void Printf(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
 
 	// These use current pen. Just a way to reduce the number of args you need to use for a property that does not change that much.
-	void Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const;
-	void Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const;
+	void Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const;
+	void Printf(DrawBuffer& pDest,int pX,int pY,const char* pFmt,...)const;
 	
 	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 	void SetPixelSize(int pPixelSize);
@@ -661,9 +652,9 @@ public:
 	int GetCharHeight()const{return 13;}
 
 	// These render with the passed in colour, does not change the pen colour.
-	int DrawChar(FrameBuffer* pDest,int pX,int pY,char pChar)const;
-	void Print(FrameBuffer* pDest,int pX,int pY,const char* pText)const;
-	void Printf(FrameBuffer* pDest,int pX,int pY,const char* pFmt,...)const;
+	int DrawChar(DrawBuffer& pDest,int pX,int pY,char pChar)const;
+	void Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const;
+	void Printf(DrawBuffer& pDest,int pX,int pY,const char* pFmt,...)const;
 	
 	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 	void SetBackgroundColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);

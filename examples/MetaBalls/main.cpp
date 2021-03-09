@@ -89,9 +89,9 @@ static uint8_t RED[256];
 static uint8_t GREEN[256];
 static uint8_t BLUE[256];
 
-void RenderScanLine(tiny2d::FrameBuffer* FB,int pFromY,int pToY,const std::vector<Ball>& pBalls)
+void RenderScanLine(tiny2d::DrawBuffer& RT,int pFromY,int pToY,const std::vector<Ball>& pBalls)
 {
-	const int Width = FB->GetWidth();
+	const int Width = RT.GetWidth();
 
 	for( int y = pFromY ; y < pToY ; y+=PixelSize )
 	{
@@ -102,7 +102,7 @@ void RenderScanLine(tiny2d::FrameBuffer* FB,int pFromY,int pToY,const std::vecto
 				TotalDist += ball.GetMeta(x,y);
 
 			uint8_t c = (uint8_t)(std::min(255,(int)(TotalDist*3000)));
-			FB->DrawRectangle(x,y,x+PixelSize,y+PixelSize,RED[c],GREEN[c],BLUE[c],true);
+			RT.DrawRectangle(x,y,x+PixelSize,y+PixelSize,RED[c],GREEN[c],BLUE[c],true);
 		}
 	}
 }
@@ -117,16 +117,17 @@ int main(int argc, char *argv[])
 
 	srand(time(NULL));
 
-	FB->ClearScreen(0,0,0);
+    tiny2d::DrawBuffer RT(FB);
+	RT.Clear(0,0,0);
 
 	// Build colours.
 	for( int i = 0 ; i < 256 ; i++ )
 	{
-		FB->HSV2RGB( (float)i * (360.0f / 255.0f) ,1.0f,1.0f - (float)i / 600.0f,RED[i],GREEN[i],BLUE[i]);
+		tiny2d::HSV2RGB( (float)i * (360.0f / 255.0f) ,1.0f,1.0f - (float)i / 600.0f,RED[i],GREEN[i],BLUE[i]);
 	}
 
-	const int Width = FB->GetWidth();
-	const int Height = FB->GetHeight();
+	const int Width = RT.GetWidth();
+	const int Height = RT.GetHeight();
 
 	// Make the balls.
 	std::vector<Ball> TheBalls;
@@ -144,28 +145,24 @@ int main(int argc, char *argv[])
 //		for( int y = 0 ; y < Height ; y+=PixelSize )
 		int y = 0;
 
-		std::thread thread1 = std::thread(RenderScanLine,FB,y,y+HeightSplit,TheBalls);
-		y += HeightSplit;
-
-		std::thread thread2 = std::thread(RenderScanLine,FB,y,y+HeightSplit,TheBalls);
-		y += HeightSplit;
-
-		std::thread thread3 = std::thread(RenderScanLine,FB,y,y+HeightSplit,TheBalls);
-		y += HeightSplit;
-
-		std::thread thread4 = std::thread(RenderScanLine,FB,y,y+HeightSplit,TheBalls);
+		std::vector<std::thread>threads(4);
+		for( int n = 0 ; n < 4 ; n++ )
+		{
+			threads[n] = std::thread([&RT,y,HeightSplit,TheBalls]()
+			{
+				RenderScanLine(RT,y,y+HeightSplit,TheBalls);
+			});
+			y += HeightSplit;
+		}
 
 		// Wait till all done.
-		thread1.join();
-		thread2.join();
-		thread3.join();
-		thread4.join();
+		for( auto& t : threads )
+		{
+			t.join();
+		}
 
-		FB->Present();
+		FB->Present(RT);
 	};
-
-	// Stop monitor burn in...
-	FB->ClearScreen(0,0,0);
 
 	delete FB;
 	return 0;

@@ -12,9 +12,13 @@ int main(int argc, char *argv[])
 	if( !FB )
 		return 1;
 
+	tiny2d::DrawBuffer RT(FB);
+	tiny2d::PixelFont Font(3);
+	Font.SetBorder(true);
+
 	srand(time(NULL));
 
-	FB->ClearScreen(0,0,0);
+	RT.Clear(0,0,0);
 
 	uint8_t col[8][3] = {{0,0,0},{255,0,0},{0,255,0},{0,0,255},{255,255,255},{255,0,255},{255,255,0},{0,255,255}};
 	
@@ -29,67 +33,66 @@ int main(int argc, char *argv[])
 
 		{
 			int r = (rand()%50)+10;
-			int x = (rand()%(FB->GetWidth()-r-r))+r;
-			int y = (rand()%(FB->GetHeight()-r-r))+r;
+			int x = (rand()%(RT.mWidth-r-r))+r;
+			int y = (rand()%(RT.mHeight-r-r))+r;
 			int c = rand()&7;
 
-			FB->DrawCircle(x,y,r,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
+			RT.DrawCircle(x,y,r,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
 		}
 
 		{
-			int FromX = rand()%FB->GetWidth();
-			int FromY = rand()%FB->GetHeight();
-			int ToX = rand()%FB->GetWidth();
-			int ToY = rand()%FB->GetHeight();
+			int FromX = rand()%RT.mWidth;
+			int FromY = rand()%RT.mHeight;
+			int ToX = rand()%RT.mWidth;
+			int ToY = rand()%RT.mHeight;
 
 			int c = rand()&7;
 			
-			FB->DrawLine(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2]);
+			RT.DrawLine(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2]);
 		}
 
 		{
-			int FromX = rand()%FB->GetWidth();
-			int FromY = rand()%FB->GetHeight();
-			int ToX = rand()%FB->GetWidth();
-			int ToY = rand()%FB->GetHeight();
+			int FromX = rand()%RT.mWidth;
+			int FromY = rand()%RT.mHeight;
+			int ToX = rand()%RT.mWidth;
+			int ToY = rand()%RT.mHeight;
 
 			int c = rand()&7;
 
-			FB->DrawRectangle(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
+			RT.DrawRectangle(FromX,FromY,ToX,ToY,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
 		}
 
 		{
-			int FromX = rand()%FB->GetWidth();
-			int FromY = rand()%FB->GetHeight();
-			int ToX = rand()%FB->GetWidth();
-			int ToY = rand()%FB->GetHeight();
+			int FromX = rand()%RT.mWidth;
+			int FromY = rand()%RT.mHeight;
+			int ToX = rand()%RT.mWidth;
+			int ToY = rand()%RT.mHeight;
 
 			int c = rand()&7;
 			int r = 5 + (rand()&15);
 
-			FB->DrawRoundedRectangle(FromX,FromY,ToX,ToY,r,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
+			RT.DrawRoundedRectangle(FromX,FromY,ToX,ToY,r,col[c][0],col[c][1],col[c][2],(rand()&1) == 0);
 		}
 
-		FB->DrawRectangle(200,20,600,220,0,0,0,true);
-		FB->DrawRectangle(220,40,580,200,0,255,0,true);
-		FB->DrawRectangle(230,50,570,190,255,0,255,false);
+		RT.DrawRectangle(200,20,600,220,0,0,0,true);
+		RT.DrawRectangle(220,40,580,200,0,255,0,true);
+		RT.DrawRectangle(230,50,570,190,255,0,255,false);
 
-		FB->DrawRoundedRectangle(200,320,600,520,20,0,0,0,true);
-		FB->DrawRoundedRectangle(220,340,580,500,20,0,255,0,true);
-		FB->DrawRoundedRectangle(230,350,570,490,20,255,0,255,false);
+		RT.DrawRoundedRectangle(200,320,600,520,20,0,0,0,true);
+		RT.DrawRoundedRectangle(220,340,580,500,20,0,255,0,true);
+		RT.DrawRoundedRectangle(230,350,570,490,20,255,0,255,false);
 
 		{
-			int cX = (int)(70.0f + ((FB->GetWidth()-130.0f) * anim));
-			FB->DrawCircle(cX,90,50,0,0,0,true);
-			FB->DrawCircle(cX,90,40,255,0,0,true);
-			FB->DrawCircle(cX,90,30,0,0,255,false);
+			int cX = (int)(70.0f + ((RT.mWidth-130.0f) * anim));
+			RT.DrawCircle(cX,90,50,0,0,0,true);
+			RT.DrawCircle(cX,90,40,255,0,0,true);
+			RT.DrawCircle(cX,90,30,0,0,255,false);
 		}
 
-		FB->Present();
-	}
+		Font.Print(RT,100,100,"This is a simple pixel font!");
 
-	// Stop monitor burn in...
-	FB->ClearScreen(0,0,0);	
+		FB->Present(RT);
+	}
 
 	delete FB;
 	return 0;

@@ -15,12 +15,7 @@ int main(int argc, char *argv[])
 	if( !FB )
 		return EXIT_FAILURE;
 
-    uint32_t rRGBBlendTable[256];
-    uint32_t rHSVBlendTable[256];
-
-    tiny2d::FrameBuffer::TweenColoursRGB(255,0,0,0,255,0,rRGBBlendTable);
-    tiny2d::FrameBuffer::TweenColoursHSV(255,0,0,0,255,0,rHSVBlendTable);
-
+    tiny2d::DrawBuffer RT(FB);
 
 	tiny2d::PixelFont TheFont(3);
 	tiny2d::PixelFont bigFont(10);
@@ -36,19 +31,18 @@ int main(int argc, char *argv[])
         const int c = (int)((std::sin(a)*127)+127);
         a += 0.01f;
 
-    	FB->ClearScreen(0,0,0);
+    	RT.Clear(0,0,0);
 
-        FB->DrawGradient(0,0,FB->GetWidth()/2,FB->GetHeight(),0,0,100,0,180,50);
-        FB->DrawGradient(FB->GetWidth()/2,FB->GetHeight(),FB->GetWidth(),0,0,0,100,0,180,50);
+        RT.DrawGradient(0,0,RT.GetWidth()/2,RT.GetHeight(),0,0,100,0,180,50);
+        RT.DrawGradient(RT.GetWidth()/2,RT.GetHeight(),RT.GetWidth(),0,0,0,100,0,180,50);
+        RT.DrawGradient(RT.GetWidth()*3/8,100,RT.GetWidth()*6/8,355,255,c,0,0,255,c);
 
-        FB->DrawGradient(FB->GetWidth()*3/8,100,FB->GetWidth()*6/8,355,255,c,0,0,255,c);
 
+		TheFont.Print(RT,RT.GetWidth() * 5 / 19,50,"HSV blend");
 
-		TheFont.Print(FB,FB->GetWidth() * 5 / 19,50,"HSV blend");
+        bigFont.Printf(RT,300,400,"%d",i);
 
-        bigFont.Printf(FB,300,400,"%d",i);
-
-        FB->Present();
+        FB->Present(RT);
     };
 
     delete FB;
