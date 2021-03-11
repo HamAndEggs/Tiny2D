@@ -1124,17 +1124,16 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 		const u_int8_t* src = pImage.mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 		{
-			size_t index = 0;
-			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize(), index += mDisplayBufferPixelSize )
+			u_int8_t* pixel = dst;
+			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize(), pixel += mDisplayBufferPixelSize )
 			{
-				assert( index >= 0 );
-				assert( index + RED_OFFSET < mDisplayBufferSize );
-				assert( index + GREEN_OFFSET < mDisplayBufferSize );
-				assert( index + BLUE_OFFSET < mDisplayBufferSize );
+				assert( pixel + RED_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+				assert( pixel + GREEN_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+				assert( pixel + BLUE_OFFSET < mDisplayBuffer + mDisplayBufferSize );
 
-				dst[ index + RED_OFFSET ]	= src[0];
-				dst[ index + GREEN_OFFSET ]	= src[1];
-				dst[ index + BLUE_OFFSET ]	= src[2];
+				pixel[ RED_OFFSET ]		= src[0];
+				pixel[ GREEN_OFFSET ]	= src[1];
+				pixel[ BLUE_OFFSET ]	= src[2];
 			}
 		}
 	}
