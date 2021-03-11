@@ -1099,7 +1099,7 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 		const u_int8_t* src = pImage.mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 		{
-			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPreMultipliedAlpha() )
+			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize() )
 			{
 				const uint16_t r = src[0] >> 3;
 				const uint16_t g = src[1] >> 2;
@@ -1115,23 +1115,26 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 	}
 	else
 	{
+		const size_t RED_OFFSET = (RedShift/8);
+		const size_t GREEN_OFFSET = (GreenShift/8);
+		const size_t BLUE_OFFSET = (BlueShift/8);
+
 		assert( mDisplayBufferPixelSize == 3 || mDisplayBufferPixelSize == 4 );
 		u_int8_t* dst = mDisplayBuffer;
 		const u_int8_t* src = pImage.mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 		{
-			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize() )
+			size_t index = 0;
+			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize(), index += mDisplayBufferPixelSize )
 			{
-				const size_t index = (x * mDisplayBufferPixelSize);
-
 				assert( index >= 0 );
-				assert( index + (RedShift/8) < mDisplayBufferSize );
-				assert( index + (GreenShift/8) < mDisplayBufferSize );
-				assert( index + (BlueShift/8) < mDisplayBufferSize );
+				assert( index + RED_OFFSET < mDisplayBufferSize );
+				assert( index + GREEN_OFFSET < mDisplayBufferSize );
+				assert( index + BLUE_OFFSET < mDisplayBufferSize );
 
-				dst[ index + (RedShift/8) ]		= src[0];
-				dst[ index + (GreenShift/8) ]	= src[1];
-				dst[ index + (BlueShift/8) ]	= src[2];
+				dst[ index + RED_OFFSET ]	= src[0];
+				dst[ index + GREEN_OFFSET ]	= src[1];
+				dst[ index + BLUE_OFFSET ]	= src[2];
 			}
 		}
 	}
