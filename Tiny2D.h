@@ -18,6 +18,7 @@
 #define TINY_2D_H
 
 #include <vector>
+#include <string>
 
 #include <assert.h>
 #include <signal.h>
