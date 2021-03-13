@@ -262,9 +262,9 @@ void DrawBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
 		const uint32_t sG = (pRGBA[1] * sA) / 255;
 		const uint32_t sB = (pRGBA[2] * sA) / 255;
 
-		const uint32_t dR = (dst[0] * dA) / 255;
-		const uint32_t dG = (dst[1] * dA) / 255;
-		const uint32_t dB = (dst[2] * dA) / 255;
+		const uint32_t dR = (dst[RED_PIXEL_INDEX] * dA) / 255;
+		const uint32_t dG = (dst[GREEN_PIXEL_INDEX] * dA) / 255;
+		const uint32_t dB = (dst[BLUE_PIXEL_INDEX] * dA) / 255;
 
 		WRITE_RGB_TO_PIXEL(dst,( sR + dR ),( sG + dG ),( sB + dB ));
 
@@ -299,9 +299,9 @@ void DrawBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
 		const uint32_t sB = pRGBA[2];
 
 		// Apply alpha to unpredictable colour values.
-		const uint32_t dR = (dst[0] * dA) / 255;
-		const uint32_t dG = (dst[1] * dA) / 255;
-		const uint32_t dB = (dst[2] * dA) / 255;
+		const uint32_t dR = (dst[RED_PIXEL_INDEX] * dA) / 255;
+		const uint32_t dG = (dst[GREEN_PIXEL_INDEX] * dA) / 255;
+		const uint32_t dB = (dst[BLUE_PIXEL_INDEX] * dA) / 255;
 
 		// Write new values
 		WRITE_RGB_TO_PIXEL(dst,( sR + dR ),( sG + dG ),( sB + dB ));
@@ -317,9 +317,6 @@ void DrawBuffer::Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 	{
 		for( int x = 0 ; x < mWidth ; x++, dest += mPixelSize )
 		{
-			dest[0] = pRed;
-			dest[1] = pGreen;
-			dest[2] = pBlue;
 			WRITE_RGB_TO_PIXEL(dest,pRed,pGreen,pBlue);
 		}
 	}

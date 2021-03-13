@@ -89,11 +89,17 @@ extern void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBl
 class FrameBuffer;
 
 // This define allows me to play with the colour order of the offscreen buffer without having to keep search the source.
+// This is only to do with the format of the data in the buffer. Not RGB buffers passed in. These are always r[0],g[1]],b[2].
+// Linux FB seems to be the wrong way around. BGR
+#define RED_PIXEL_INDEX 	2
+#define GREEN_PIXEL_INDEX 	1
+#define BLUE_PIXEL_INDEX	0
+
 #define WRITE_RGB_TO_PIXEL(PIXEL_BUFFER,RED_VALUE,GREEN_VALUE,BLUE_VALUE)	\
 {																			\
-	PIXEL_BUFFER[ 0 ] = BLUE_VALUE;											\
-	PIXEL_BUFFER[ 1 ] = GREEN_VALUE;										\
-	PIXEL_BUFFER[ 2 ] = RED_VALUE;											\
+	PIXEL_BUFFER[ RED_PIXEL_INDEX ] = RED_VALUE;							\
+	PIXEL_BUFFER[ GREEN_PIXEL_INDEX ] = GREEN_VALUE;						\
+	PIXEL_BUFFER[ BLUE_PIXEL_INDEX ] = BLUE_VALUE;							\
 }
 
 /**
