@@ -95,7 +95,24 @@ int main(int argc, char *argv[])
 			RT.DrawCircle(cX,90,30,0,0,255);
 		}
 
+		Font.SetPenColour(255,255,255);
 		Font.Print(RT,100,100,"This is a simple pixel font!");
+
+		RT.FillRectangle(200,200,800,400,0,0,0);
+		RT.FillRectangle(220,220,780,380,255,255,255);
+
+		RT.FillRectangle(250,250,350,350,255,0,0);
+		RT.FillRectangle(450,250,550,350,0,255,0);
+		RT.FillRectangle(650,250,750,350,0,0,255);
+
+		Font.SetPenColour(255,0,0);
+		Font.Print(RT,250,300,"RED");
+
+		Font.SetPenColour(0,255,0);
+		Font.Print(RT,450,300,"GREEN");
+
+		Font.SetPenColour(0,0,255);
+		Font.Print(RT,650,300,"BLUE");
 
 		FB->Present(RT);
 	}
