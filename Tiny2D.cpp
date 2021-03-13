@@ -212,7 +212,7 @@ DrawBuffer::DrawBuffer(int pWidth, int pHeight,bool pHasAlpha,bool pPreMultiplie
 DrawBuffer::DrawBuffer(const FrameBuffer* pFB)
 {
 	assert( pFB );
-	Resize(pFB->GetWidth(),pFB->GetHeight(),false,false);
+	Resize(pFB->GetWidth(),pFB->GetHeight(),pFB->GetPixelSize(),false,false);
 }
 
 DrawBuffer::DrawBuffer() :
@@ -238,31 +238,6 @@ void DrawBuffer::Resize(int pWidth, int pHeight, size_t pPixelSize,bool pHasAlph
 	mHasAlpha = pHasAlpha;
 	mPreMultipliedAlpha = pPreMultipliedAlpha;
 	mPixels.resize(mHeight * mStride);
-}
-
-void DrawBuffer::WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
-{
-	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
-	{
-		// When optimized by compiler these const vars will
-		// all move to generate the same code as if I made it all one line and unreadable!
-		// Trust your optimizer. :)
-		const size_t index = GetPixelIndex(pX,pY);
-
-		assert( index >= 0 );
-		assert( index + 0 < mPixels.size() );
-		assert( index + 1 < mPixels.size() );
-		assert( index + 2 < mPixels.size() );
-
-		mPixels[ index + 0 ] = pRed;
-		mPixels[ index + 1 ] = pGreen;
-		mPixels[ index + 2 ] = pBlue;
-
-		if( mHasAlpha )
-		{
-			mPixels[ index + 3 ] = pAlpha;
-		}
-	}
 }
 
 void DrawBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
@@ -291,9 +266,7 @@ void DrawBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
 		const uint32_t dG = (dst[1] * dA) / 255;
 		const uint32_t dB = (dst[2] * dA) / 255;
 
-		dst[0] = (uint8_t)( sR + dR );
-		dst[1] = (uint8_t)( sG + dG );
-		dst[2] = (uint8_t)( sB + dB );
+		WRITE_RGB_TO_PIXEL(dst,( sR + dR ),( sG + dG ),( sB + dB ));
 
 		// If dest has alpha, we need to pic the max value. Blending will just make everything vanish.
 		if( mHasAlpha && dst[3] < sA )
@@ -331,9 +304,7 @@ void DrawBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
 		const uint32_t dB = (dst[2] * dA) / 255;
 
 		// Write new values
-		dst[0] = (uint8_t)( sR + dR );
-		dst[1] = (uint8_t)( sG + dG );
-		dst[2] = (uint8_t)( sB + dB );
+		WRITE_RGB_TO_PIXEL(dst,( sR + dR ),( sG + dG ),( sB + dB ));
 
 		// For pre calculated alpha there is no good choice for combining the source and dest alpha. So we just ignore it.
 	}
@@ -349,6 +320,7 @@ void DrawBuffer::Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 			dest[0] = pRed;
 			dest[1] = pGreen;
 			dest[2] = pBlue;
+			WRITE_RGB_TO_PIXEL(dest,pRed,pGreen,pBlue);
 		}
 	}
 
@@ -481,9 +453,7 @@ void DrawBuffer::DrawLineH(int pFromX,int pFromY,int pToX,uint8_t pRed,uint8_t p
 	uint8_t *dest = mPixels.data() + (pFromX * mPixelSize) + (pFromY * mStride);
 	for( int x = pFromX ; x <= pToX && x < mWidth ; x++, dest += mPixelSize )
 	{
-		dest[0] = pRed;
-		dest[1] = pGreen;
-		dest[2] = pBlue;
+		WRITE_RGB_TO_PIXEL(dest,pRed,pGreen,pBlue);
 		if( mHasAlpha )
 		{
 			dest[3] = pAlpha;
@@ -510,9 +480,7 @@ void DrawBuffer::DrawLineV(int pFromX,int pFromY,int pToY,uint8_t pRed,uint8_t p
 	uint8_t *dest = mPixels.data() + (pFromX * mPixelSize) + (pFromY*mStride);
 	for( int y = pFromY ; y <= pToY && y < mHeight ; y++, dest += mStride )
 	{
-		dest[0] = pRed;
-		dest[1] = pGreen;
-		dest[2] = pBlue;
+		WRITE_RGB_TO_PIXEL(dest,pRed,pGreen,pBlue);
 		if( mHasAlpha )
 		{
 			dest[3] = pAlpha;
@@ -841,15 +809,12 @@ void DrawBuffer::PreMultiplyAlpha()
 	size_t pixelCount = mPixels.size()/4;
 	mPreMultipliedAlpha = true;
 	while( pixelCount-- )
-	{// More readable that doing it all on one line and generates same code once optimized by complier!
-		const uint32_t R = pixel[0];
-		const uint32_t G = pixel[1];
-		const uint32_t B = pixel[2];
+	{
 		const uint32_t A = pixel[3];
 
-		pixel[0] = (uint8_t)((R * A)/255);
-		pixel[1] = (uint8_t)((G * A)/255);
-		pixel[2] = (uint8_t)((B * A)/255);
+		pixel[0] = (uint8_t)((pixel[0] * A)/255);
+		pixel[1] = (uint8_t)((pixel[1] * A)/255);
+		pixel[2] = (uint8_t)((pixel[2] * A)/255);
 		pixel[3] = 255 - A;
 
 		pixel += 4;
@@ -1089,9 +1054,11 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 
 	if( mDisplayBufferPixelSize == pImage.GetPixelSize() &&
 		mDisplayBufferStride == pImage.GetStride() &&
-		mDisplayBufferSize == pImage.mPixels.size() )
+		mDisplayBufferSize <= pImage.mPixels.size() )
 	{// Early out...
-		memcpy(mDisplayBuffer,pImage.mPixels.data(),pImage.mPixels.size());
+		// Copy mDisplayBufferSize bytes, not the number of source, then we can't over flow what we have to write to.
+		// May read more, no big deal.
+		memcpy(mDisplayBuffer,pImage.mPixels.data(),mDisplayBufferSize);
 	}
 	else if( mDisplayBufferPixelSize == 2 )
 	{
@@ -1101,9 +1068,9 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 		{
 			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize() )
 			{
-				const uint16_t r = src[0] >> 3;
+				const uint16_t b = src[0] >> 3;
 				const uint16_t g = src[1] >> 2;
-				const uint16_t b = src[2] >> 3;
+				const uint16_t r = src[2] >> 3;
 
 				const uint16_t pixel = (r << RedShift) | (g << GreenShift) | (b << BlueShift);
 
@@ -1131,9 +1098,9 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 				assert( pixel + GREEN_OFFSET < mDisplayBuffer + mDisplayBufferSize );
 				assert( pixel + BLUE_OFFSET < mDisplayBuffer + mDisplayBufferSize );
 
-				pixel[ RED_OFFSET ]		= src[0];
+				pixel[ BLUE_OFFSET ]	= src[0];
 				pixel[ GREEN_OFFSET ]	= src[1];
-				pixel[ BLUE_OFFSET ]	= src[2];
+				pixel[ RED_OFFSET ]		= src[2];
 			}
 		}
 	}
@@ -1680,7 +1647,7 @@ void PixelFont::DrawChar(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pG
 				{
 					if( bits&(1<<bit) )
 					{
-						pDest.WritePixel(x,pY + y,pGreen,pGreen,pBlue);
+						pDest.WritePixel(x,pY + y,pRed,pGreen,pBlue);
 					}
 				}
 			}
@@ -1720,7 +1687,7 @@ void PixelFont::DrawChar(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pG
 				{
 					if( bits&(1<<bit) )
 					{
-						pDest.FillRectangle(x,pY,x+mPixelSize,pY+mPixelSize,pGreen,pGreen,pBlue);
+						pDest.FillRectangle(x,pY,x+mPixelSize,pY+mPixelSize,pRed,pGreen,pBlue);
 					}
 				}
 			}
@@ -1733,7 +1700,7 @@ void PixelFont::Print(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGree
 {
 	while(*pText)
 	{
-		DrawChar(pDest,pX,pY,pGreen,pGreen,pBlue,*pText);
+		DrawChar(pDest,pX,pY,pRed,pGreen,pBlue,*pText);
 		pX += 8*mPixelSize;
 		pText++;
 	};
@@ -1746,7 +1713,7 @@ void PixelFont::Printf(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGre
 	va_start(args, pFmt);
 	vsnprintf(buf, sizeof(buf), pFmt, args);
 	va_end(args);
-	Print(pDest, pX,pY,pGreen,pGreen,pBlue, buf);
+	Print(pDest, pX,pY,pRed,pGreen,pBlue, buf);
 }
 
 void PixelFont::Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const

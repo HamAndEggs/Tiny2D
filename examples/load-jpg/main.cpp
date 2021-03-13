@@ -103,7 +103,7 @@ METHODDEF(void) my_error_exit (j_common_ptr cinfo)
 * Sample routine for JPEG decompression.  We assume that the source file name
 * is passed in.  We want to return 1 on success, 0 on error.
 */
-GLOBAL(int) read_JPEG_file (char *filename,tiny2d::DrawBuffer& pImage)
+GLOBAL(int) read_JPEG_file (const char *filename,tiny2d::DrawBuffer& pImage)
 {	
 	/* This struct contains the JPEG decompression parameters and pointers to
 	* working space (which is allocated as needed by the JPEG library).
@@ -236,26 +236,21 @@ GLOBAL(int) read_JPEG_file (char *filename,tiny2d::DrawBuffer& pImage)
 
 int main(int argc, char *argv[])
 {
-	if( argc == 2 )
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
+	if( FB )
 	{
-		tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
-		if( FB )
+		tiny2d::DrawBuffer RT(FB);
+
+		read_JPEG_file("rose.jpg",RT);
+		
+		while( FB->GetKeepGoing() )
 		{
-		    tiny2d::DrawBuffer RT(FB);
-
-			read_JPEG_file(argv[1],RT);
 			FB->Present(RT);
-
-#ifdef USE_X11_EMULATION
-	sleep(5);
-#endif
-			
-			delete FB;
-			FB = NULL;
-		}
+		};
+		
+		delete FB;
+		FB = NULL;
 	}
-	else
-		printf("Usage: jpegview [filename]\n");
 
 	return 0;
 }

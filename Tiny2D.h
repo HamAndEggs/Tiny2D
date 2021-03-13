@@ -88,6 +88,14 @@ extern void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBl
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 class FrameBuffer;
 
+// This define allows me to play with the colour order of the offscreen buffer without having to keep search the source.
+#define WRITE_RGB_TO_PIXEL(PIXEL_BUFFER,RED_VALUE,GREEN_VALUE,BLUE_VALUE)	\
+{																			\
+	PIXEL_BUFFER[ 0 ] = BLUE_VALUE;											\
+	PIXEL_BUFFER[ 1 ] = GREEN_VALUE;										\
+	PIXEL_BUFFER[ 2 ] = RED_VALUE;											\
+}
+
 /**
  * @brief This is the main off screen drawing / image buffer.
  * This can be used to simply hold an image as well as creating new images from primitive calls.
@@ -112,7 +120,11 @@ public:
 
 	/**
 	 * @brief Construct a draw buffer that is suitable for use as a render target.
-	 * 
+	 * This makes it the same size as dest so in present we can do a memcpy. Gives us a four fold speed up.
+	 * For most chips, don't matter. But when you get to low speed, 40Mhz chips, every little helps.
+	 * This is about the only optimisation I will do. I expect people to use this by creating offscreen buffers
+	 * that only get updated when something changes and composite the changes together at end of frame.
+	 * So most of the time all the rendering is done is to make sure the display has been updated. Just incase TTY had put something up.
 	 * @param pFB 
 	 */
 	DrawBuffer(const FrameBuffer* pFB);
@@ -126,7 +138,6 @@ public:
 	inline int GetHeight()const{return mHeight;}
 	inline size_t GetPixelSize()const{return mPixelSize;}
 	inline size_t GetStride()const{return mStride;}
-	inline bool GetPreMultipliedAlpha()const{return mPreMultipliedAlpha;}
 
 	/**
 	 * @brief Get the index of the first byte of the pixel at x,y.
@@ -149,7 +160,29 @@ public:
 	 * The pixel will not be written if it's outside the frame buffers bounds.
 	 * pAlpha is ignored if destination has no alpha channel.
 	 */
-	void WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
+	inline void WritePixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255)
+	{
+		if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
+		{
+			// When optimized by compiler these const vars will
+			// all move to generate the same code as if I made it all one line and unreadable!
+			// Trust your optimizer. :)
+			const size_t index = GetPixelIndex(pX,pY);
+
+			assert( index >= 0 );
+			assert( index + 2 < mPixels.size() );
+
+			uint8_t* dst = mPixels.data() + index;
+
+			WRITE_RGB_TO_PIXEL(dst,pRed,pGreen,pBlue);
+
+			if( mHasAlpha )
+			{
+				assert( index + 3 < mPixels.size() );
+				dst[ 3 ] = pAlpha;
+			}
+		}
+	}
 
 	/**
 	 * @brief Blends a single pixel with the frame buffer. does (S*A) + (D*(1-A))
@@ -327,6 +360,9 @@ public:
 		Returns the height of the frame buffer.
 	*/
 	int GetHeight()const{return mHeight;}
+
+	int GetPixelSize()const{return mDisplayBufferPixelSize;}
+	int GetStride()const{return mDisplayBufferStride;}
 
 	/**
 	 * @brief See if the app main loop should keep going.
