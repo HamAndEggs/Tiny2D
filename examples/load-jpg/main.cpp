@@ -240,7 +240,6 @@ int main(int argc, char *argv[])
 	if( FB )
 	{
 		tiny2d::DrawBuffer RT(FB);
-
 		read_JPEG_file("rose.jpg",RT);
 		
 		while( FB->GetKeepGoing() )

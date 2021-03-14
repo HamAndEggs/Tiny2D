@@ -235,6 +235,7 @@ void DrawBuffer::Resize(int pWidth, int pHeight, size_t pPixelSize,bool pHasAlph
 	mHeight = pHeight;
 	mPixelSize = pPixelSize;
 	mStride = pWidth * pPixelSize;
+	mLastlineOffset = mStride * (mHeight - 1);
 	mHasAlpha = pHasAlpha;
 	mPreMultipliedAlpha = pPreMultipliedAlpha;
 	mPixels.resize(mHeight * mStride);
@@ -250,10 +251,7 @@ void DrawBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
 		const size_t index = GetPixelIndex(pX,pY);
 		uint8_t* dst = mPixels.data() + index;
 
-		assert( index >= 0 );
-		assert( index + 0 < mPixels.size() );
-		assert( index + 1 < mPixels.size() );
-		assert( index + 2 < mPixels.size() );
+		AssertPixelIsInBuffer(dst);
 
 		const uint32_t sA = pRGBA[3];
 		const uint32_t dA = 255 - sA;
@@ -286,10 +284,7 @@ void DrawBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
 		const size_t index = GetPixelIndex(pX,pY);
 		uint8_t* dst = mPixels.data() + index;
 
-		assert( index >= 0 );
-		assert( index + 0 < mPixels.size() );
-		assert( index + 1 < mPixels.size() );
-		assert( index + 2 < mPixels.size() );
+		AssertPixelIsInBuffer(dst);
 
 		const uint32_t dA = pRGBA[3];	// Will already have been subtracted from 255. So just use value.
 
@@ -332,6 +327,11 @@ void DrawBuffer::Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 			}
 		}
 	}
+}
+
+void DrawBuffer::Clear(uint8_t pValue)
+{
+	memset(mPixels.data(),pValue,mPixels.size());
 }
 
 void DrawBuffer::BlitRGB(const uint8_t* pSourcePixels,int pX,int pY,int pSourceWidth,int pSourceHeight)
@@ -422,14 +422,34 @@ void DrawBuffer::BlitRGBA(const uint8_t* pSourcePixels,int pX,int pY,int pWidth,
 
 void DrawBuffer::Blit(const DrawBuffer& pImage,int pX,int pY)
 {
+	// This is ripe for a big win using memcpy. But for now, just make it work!
+	const int width = pX + pImage.mWidth; 
+	const int height = pY + pImage.mHeight;
+	
+	const uint8_t* sourcePixels = pImage.mPixels.data();
+
 	if( pImage.mHasAlpha )
 	{
-		BlitRGBA(pImage.mPixels.data(),pX,pY,pImage.mWidth,pImage.mHeight,0,0,pImage.mStride,pImage.mPreMultipliedAlpha);
+		for( int y = pY ; y < mHeight && y < height ; y++, sourcePixels += pImage.mStride )
+		{
+			const uint8_t* pixel = sourcePixels;
+			for( int x = pX ; x < mWidth && x < width ; x++, pixel += pImage.mPixelSize )
+			{
+				WritePixel(x,y,pixel[RED_PIXEL_INDEX],pixel[GREEN_PIXEL_INDEX],pixel[BLUE_PIXEL_INDEX],pixel[ALPHA_PIXEL_INDEX]);
+			}
+		}
 	}
 	else
 	{
-		BlitRGB(pImage.mPixels.data(),pX,pY,pImage.mWidth,pImage.mHeight,0,0,pImage.mStride);
-	}	
+		for( int y = pY ; y < mHeight && y < height ; y++, sourcePixels += pImage.mStride )
+		{
+			const uint8_t* pixel = sourcePixels;
+			for( int x = pX ; x < mWidth && x < width ; x++, pixel += pImage.mPixelSize )
+			{
+				WritePixel(x,y,pixel[RED_PIXEL_INDEX],pixel[GREEN_PIXEL_INDEX],pixel[BLUE_PIXEL_INDEX]);
+			}
+		}
+	}
 }
 
 
@@ -749,6 +769,40 @@ void DrawBuffer::FillRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,in
 	FillRectangle(pFromX,pFromY+pRadius,pToX,pToY-pRadius,pRed,pGreen,pBlue,pAlpha);
 }
 
+void DrawBuffer::FillCheckerBoard(int pX,int pY,int pXCount,int pYCount,int pXSize,int pYSize,const uint8_t pRGBA[2][4])
+{
+	const int width = pXSize-1;
+	const int height = pYSize-1;
+
+	for( int y = 0 ; y < pYCount ; y++, pY += pYSize )
+	{
+		int px = pX;
+		for( int x = 0 ; x < pXCount ; x++, px += pXSize )
+		{
+			if( (x&1) == (y&1) )
+				FillRectangle(px,pY,px+width,pY+height,pRGBA[0][0],pRGBA[0][1],pRGBA[0][2],pRGBA[0][3]);
+			else
+				FillRectangle(px,pY,px+width,pY+height,pRGBA[1][0],pRGBA[1][1],pRGBA[1][2],pRGBA[1][3]);
+		}
+	}
+}
+
+void DrawBuffer::FillCheckerBoard(int pX,int pY,int pXCount,int pYCount,int pXSize,int pYSize,uint8_t pA,uint8_t pB)
+{
+	const uint8_t RGBA[2][4] = {{pA,pA,pA,255},{pB,pB,pB,255}};
+	FillCheckerBoard(pX, pY, pXCount, pYCount, pXSize, pYSize,RGBA);
+}
+
+void DrawBuffer::FillCheckerBoard(int pXSize,int pYSize,const uint8_t pRGBA[2][4])
+{
+	FillCheckerBoard(0,0,(mWidth+pXSize-1) / pXSize,(mHeight+pYSize+1) / pYSize,pXSize,pYSize,pRGBA);
+}
+
+void DrawBuffer::FillCheckerBoard(int pXSize,int pYSize,uint8_t pA,uint8_t pB)
+{
+	const uint8_t RGBA[2][4] = {{pA,pA,pA,255},{pB,pB,pB,255}};
+	FillCheckerBoard(pXSize, pYSize,RGBA);
+}
 
 void DrawBuffer::DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue)
 {
@@ -796,6 +850,62 @@ void DrawBuffer::DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pF
 	}
 }
 
+void DrawBuffer::ScrollBuffer(int pXDirection,int pYDirection,int8_t pRedFill,uint8_t pGreenFill,uint8_t pBlueFill,uint8_t pAlphaFill)
+{
+	const uint8_t* src = mPixels.data() + (mStride * -pYDirection);	
+	uint8_t* dst = mPixels.data();
+
+	const int numLines = mHeight - std::abs(pYDirection);
+	const int numBytes = (mWidth - (std::abs(pXDirection))) * mPixelSize;
+
+	size_t stride = mStride;
+	if( pYDirection >= 0 )
+	{
+		stride = -stride;
+		dst += mLastlineOffset;
+		src += mLastlineOffset;
+	}
+
+	if( pXDirection < 0 )
+	{
+		src += mPixelSize * -pXDirection;
+	}
+	else
+	{
+		dst += mPixelSize * pXDirection;
+	}
+
+	// Now do the work.
+	for( int y = 0 ; y < numLines ; y++, src += stride, dst += stride )
+	{
+		AssertPixelIsInBuffer(src);
+		AssertPixelIsInBuffer(dst);
+
+		memcpy(dst,src,numBytes);
+	}
+
+	// Now fill in the area that has just been exposed.
+
+	if( pYDirection > 0 )
+	{
+		FillRectangle(0,0,mWidth,pYDirection,pRedFill,pGreenFill,pBlueFill,pAlphaFill);
+	}
+	else if( pYDirection < 0 )
+	{
+		FillRectangle(0,mHeight + pYDirection,mWidth,mHeight,pRedFill,pGreenFill,pBlueFill,pAlphaFill);
+	}
+
+	if( pXDirection > 0 )
+	{
+		FillRectangle(0,0,pXDirection,mHeight,pRedFill,pGreenFill,pGreenFill,pAlphaFill);
+	}
+	else if( pXDirection < 0 )
+	{
+		FillRectangle(mWidth+pXDirection,0,mWidth,mHeight,		pRedFill,pGreenFill,pBlueFill,pAlphaFill);
+	}
+
+}
+
 void DrawBuffer::PreMultiplyAlpha()
 {
 	assert( mPreMultipliedAlpha == false ); // Can't do this more than once!
@@ -807,6 +917,8 @@ void DrawBuffer::PreMultiplyAlpha()
 	mPreMultipliedAlpha = true;
 	while( pixelCount-- )
 	{
+		AssertPixelIsInBuffer(pixel);
+
 		const uint32_t A = pixel[3];
 
 		pixel[0] = (uint8_t)((pixel[0] * A)/255);
@@ -1996,6 +2108,48 @@ void FreeTypeFont::RecomputeBlendTable()
 }
 
 #endif //#ifdef USE_FREETYPEFONTS
+
+MillisecondTicker::MillisecondTicker(int pMilliseconds)
+{
+	SetTimeout(pMilliseconds);
+}
+
+void MillisecondTicker::SetTimeout(int pMilliseconds)
+{
+	assert(pMilliseconds > 0 );
+	mTimeout = (CLOCKS_PER_SEC * pMilliseconds) / 1000;
+	mTrigger = clock() + mTimeout;
+}
+
+bool MillisecondTicker::Tick()
+{
+	return Tick(clock());
+}
+
+bool MillisecondTicker::Tick(const clock_t pNow)
+{
+	if( mTrigger < pNow )
+	{
+		mTrigger += mTimeout;
+		return true;
+	}
+	return false;
+}
+
+void MillisecondTicker::Tick(std::function<void()> pCallback)
+{
+	Tick(clock(),pCallback);
+}
+
+void MillisecondTicker::Tick(const clock_t pNow,std::function<void()> pCallback )
+{
+	assert( pCallback != nullptr );
+	if( mTrigger < pNow )
+	{
+		mTrigger += mTimeout;
+		pCallback();
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace tiny2d
