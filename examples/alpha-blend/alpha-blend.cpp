@@ -93,14 +93,14 @@ int main(int argc, char *argv[])
         }
 
         // Now draw the alpha tests.
-        RT.Blit(R1,50,100);
-        RT.Blit(G1,150,250);
-        RT.Blit(B1,200,80);
+        RT.Blend(R1,50,100);
+        RT.Blend(G1,150,250);
+        RT.Blend(B1,200,80);
         TheFont.Print(RT,60,110,"Normal Alpha blending");
 
-        RT.Blit(R2,450,100);
-        RT.Blit(G2,550,250);
-        RT.Blit(B2,600,80);
+        RT.Blend(R2,450,100);
+        RT.Blend(G2,550,250);
+        RT.Blend(B2,600,80);
         TheFont.Print(RT,540,140,"Pre multiplied Alpha blending");
 
         TheFont.Printf(RT,0,0,"Counting %d",n++);

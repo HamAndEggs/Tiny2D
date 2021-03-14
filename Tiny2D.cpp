@@ -241,7 +241,7 @@ void DrawBuffer::Resize(int pWidth, int pHeight, size_t pPixelSize,bool pHasAlph
 	mPixels.resize(mHeight * mStride);
 }
 
-void DrawBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
+void DrawBuffer::BlendPixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
 	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
 	{
@@ -253,12 +253,12 @@ void DrawBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
 
 		AssertPixelIsInBuffer(dst);
 
-		const uint32_t sA = pRGBA[3];
+		const uint32_t sA = pAlpha;
 		const uint32_t dA = 255 - sA;
 
-		const uint32_t sR = (pRGBA[0] * sA) / 255;
-		const uint32_t sG = (pRGBA[1] * sA) / 255;
-		const uint32_t sB = (pRGBA[2] * sA) / 255;
+		const uint32_t sR = (pRed * sA) / 255;
+		const uint32_t sG = (pGreen * sA) / 255;
+		const uint32_t sB = (pBlue * sA) / 255;
 
 		const uint32_t dR = (dst[RED_PIXEL_INDEX] * dA) / 255;
 		const uint32_t dG = (dst[GREEN_PIXEL_INDEX] * dA) / 255;
@@ -274,7 +274,7 @@ void DrawBuffer::BlendPixel(int pX,int pY,const uint8_t* pRGBA)
 	}
 }
 
-void DrawBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
+void DrawBuffer::BlendPreAlphaPixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
 	if( pX >= 0 && pX < mWidth && pY >= 0 && pY < mHeight )
 	{
@@ -286,12 +286,12 @@ void DrawBuffer::BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
 
 		AssertPixelIsInBuffer(dst);
 
-		const uint32_t dA = pRGBA[3];	// Will already have been subtracted from 255. So just use value.
+		const uint32_t dA = pAlpha;	// Will already have been subtracted from 255. So just use value.
 
 		// Already had Alpha applied, just grab values.
-		const uint32_t sR = pRGBA[0];
-		const uint32_t sG = pRGBA[1];
-		const uint32_t sB = pRGBA[2];
+		const uint32_t sR = pRed;
+		const uint32_t sG = pGreen;
+		const uint32_t sB = pBlue;
 
 		// Apply alpha to unpredictable colour values.
 		const uint32_t dR = (dst[RED_PIXEL_INDEX] * dA) / 255;
@@ -449,6 +449,42 @@ void DrawBuffer::Blit(const DrawBuffer& pImage,int pX,int pY)
 				WritePixel(x,y,pixel[RED_PIXEL_INDEX],pixel[GREEN_PIXEL_INDEX],pixel[BLUE_PIXEL_INDEX]);
 			}
 		}
+	}
+}
+
+void DrawBuffer::Blend(const DrawBuffer& pImage,int pX,int pY)
+{
+	// This is ripe for a big win using memcpy. But for now, just make it work!
+	const int width = pX + pImage.mWidth; 
+	const int height = pY + pImage.mHeight;
+	
+	const uint8_t* sourcePixels = pImage.mPixels.data();
+
+	if( pImage.mPreMultipliedAlpha )
+	{
+		for( int y = pY ; y < mHeight && y < height ; y++, sourcePixels += pImage.mStride )
+		{
+			const uint8_t* pixel = sourcePixels;
+			for( int x = pX ; x < mWidth && x < width ; x++, pixel += pImage.mPixelSize )
+			{
+				BlendPreAlphaPixel(x,y,pixel[RED_PIXEL_INDEX],pixel[GREEN_PIXEL_INDEX],pixel[BLUE_PIXEL_INDEX],pixel[ALPHA_PIXEL_INDEX]);
+			}
+		}
+	}
+	else if( pImage.mHasAlpha )
+	{
+		for( int y = pY ; y < mHeight && y < height ; y++, sourcePixels += pImage.mStride )
+		{
+			const uint8_t* pixel = sourcePixels;
+			for( int x = pX ; x < mWidth && x < width ; x++, pixel += pImage.mPixelSize )
+			{
+				BlendPixel(x,y,pixel[RED_PIXEL_INDEX],pixel[GREEN_PIXEL_INDEX],pixel[BLUE_PIXEL_INDEX],pixel[ALPHA_PIXEL_INDEX]);
+			}
+		}
+	}
+	else
+	{
+		Blit(pImage,pX,pY);
 	}
 }
 

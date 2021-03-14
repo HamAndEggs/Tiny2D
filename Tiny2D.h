@@ -208,7 +208,11 @@ public:
 	 * 
 	 * @param pRGBA Four bytes, pRGBA[0] == red, pRGBA[1] == green, pRGBA[2] == blue, pRGBA[3] == alpha
 	 */
-	void BlendPixel(int pX,int pY,const uint8_t* pRGBA);
+	void BlendPixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha);
+	void BlendPixel(int pX,int pY,const uint8_t* pRGBA)
+	{
+		BlendPixel(pX,pY,pRGBA[0],pRGBA[1],pRGBA[2],pRGBA[3]);
+	}
 
 	/**
 	 * @brief Blends a single pixel with the frame buffer. does S + (D * A) Quicker but less flexable.
@@ -216,7 +220,11 @@ public:
 	 * 
 	 * @param pRGBA Four bytes, pRGBA[0] == red, pRGBA[1] == green, pRGBA[2] == blue, pRGBA[3] == alpha
 	 */
-	void BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA);
+	void BlendPreAlphaPixel(int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha);
+	void BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA)
+	{
+		BlendPreAlphaPixel(pX,pY,pRGBA[0],pRGBA[1],pRGBA[2],pRGBA[3]);
+	}
 	
 	/**
 	 * @brief Clears the entire screen to the passed colour.
@@ -267,6 +275,12 @@ public:
 	 * Does a pixel for pixel copy, no alpha blending.
 	 */
 	void Blit(const DrawBuffer& pImage,int pX,int pY);
+
+	/**
+	 * @brief Draws the entire image to the draw buffer, does alpha blending if source has alpha.
+	 * Does a pixel for pixel copy, no alpha blending.
+	 */
+	void Blend(const DrawBuffer& pImage,int pX,int pY);
 
 	/**
 	 * @brief Draws a horizontal line.
