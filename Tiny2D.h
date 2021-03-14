@@ -19,10 +19,12 @@
 
 #include <vector>
 #include <string>
+#include <functional>
 
 #include <assert.h>
 #include <signal.h>
 #include <stdint.h>
+#include <time.h>
 
 #include <linux/fb.h>
 
@@ -94,6 +96,7 @@ class FrameBuffer;
 #define RED_PIXEL_INDEX 	2
 #define GREEN_PIXEL_INDEX 	1
 #define BLUE_PIXEL_INDEX	0
+#define ALPHA_PIXEL_INDEX	3
 
 #define WRITE_RGB_TO_PIXEL(PIXEL_BUFFER,RED_VALUE,GREEN_VALUE,BLUE_VALUE)	\
 {																			\
@@ -101,6 +104,17 @@ class FrameBuffer;
 	PIXEL_BUFFER[ GREEN_PIXEL_INDEX ] = GREEN_VALUE;						\
 	PIXEL_BUFFER[ BLUE_PIXEL_INDEX ] = BLUE_VALUE;							\
 }
+
+/**
+ * @brief Checks that the address passed, with pixel width, if written to, will not overlow the buffer.
+ * has to be a define so that you get told where the error is.
+ * @param pPixel 
+ */
+#ifdef	NDEBUG
+	#define AssertPixelIsInBuffer(pPixel)	(__ASSERT_VOID_CAST (0))
+#else
+	#define AssertPixelIsInBuffer(pPixel)	{ assert( pPixel >= mPixels.data() ); assert( pPixel <= mPixels.data() + mPixels.size() - mPixelSize ); }
+#endif
 
 /**
  * @brief This is the main off screen drawing / image buffer.
@@ -174,11 +188,9 @@ public:
 			// all move to generate the same code as if I made it all one line and unreadable!
 			// Trust your optimizer. :)
 			const size_t index = GetPixelIndex(pX,pY);
-
-			assert( index >= 0 );
-			assert( index + 2 < mPixels.size() );
-
 			uint8_t* dst = mPixels.data() + index;
+
+			AssertPixelIsInBuffer(dst);
 
 			WRITE_RGB_TO_PIXEL(dst,pRed,pGreen,pBlue);
 
@@ -207,18 +219,16 @@ public:
 	void BlendPreAlphaPixel(int pX,int pY,const uint8_t* pRGBA);
 	
 	/**
-	 * @brief Clears the entire screen.
+	 * @brief Clears the entire screen to the passed colour.
 	 * Alpha ignored it dest has no alpha channel
 	 */
-	void Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha);
+	void Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
 
 	/**
-	 * @brief Clears the entire screen.
+	 * @brief sets all the pixels to one colour.
+	 * Does one fill with memset!
 	 */
-	void Clear(uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
-	{
-		Clear(pRed,pGreen,pBlue,255);
-	}
+	void Clear(uint8_t pValue = 0);
 
 	/**
 	 * @briefExpects source to be 24bit, three 8 bit bytes in R G B order.
@@ -254,6 +264,7 @@ public:
 
 	/**
 	 * @brief Draws the entire image to the draw buffer.
+	 * Does a pixel for pixel copy, no alpha blending.
 	 */
 	void Blit(const DrawBuffer& pImage,int pX,int pY);
 
@@ -293,9 +304,31 @@ public:
 	void FillRoundedRectangle(int pFromX,int pFromY,int pToX,int pToY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha = 255);
 
 	/**
+	 * @brief Fills a rect tangle based on count * size starting at pos with the two passed colours
+	 * So if count is 8 and size is 16 pixel width will be 128
+	 * @param pRGBA Two Four byte arrays for RGBA, A ignored if dest has no alpha channel. Done like this else we'll have 8 extra params.
+	 * [0][0] == red, [0][1] == green, [0][2] == blue, [0][3] == alpha, 
+	 */
+	void FillCheckerBoard(int pX,int pY,int pXCount,int pYCount,int pXSize,int pYSize,const uint8_t pRGBA[2][4]);
+	void FillCheckerBoard(int pX,int pY,int pXCount,int pYCount,int pXSize,int pYSize,uint8_t pA,uint8_t pB);
+
+	/**
+	 * @brief Fills the entire buffer with the checker board with each cells size being defined by size.
+	 */
+	void FillCheckerBoard(int pXSize,int pYSize,const uint8_t pRGBA[2][4]);
+	void FillCheckerBoard(int pXSize,int pYSize,uint8_t pA,uint8_t pB);
+
+	/**
 	 * @brief Draws a gradient using HSV colour space. Don't expect high speed, is doing a lot of math!
 	 */
 	void DrawGradient(int pFromX,int pFromY,int pToX,int pToY,uint8_t pFormRed,uint8_t pFormGreen,uint8_t pFormBlue,uint8_t pToRed,uint8_t pToGreen,uint8_t pToBlue);
+
+	/**
+	 * @brief Shifts the pixels in the X and Y direction by their magnitude. The area that is uncovered by this shit is filled with the values passed in.
+	 * This is used to easily create data plots. You just scroll then add the new pixel.
+	 * Means you don't have to keep redrawing the entire graph.
+	 */
+	void ScrollBuffer(int pXDirection,int pYDirection,int8_t pRedFill = 0,uint8_t pGreenFill = 0,uint8_t pBlueFill = 0,uint8_t pAlphaFill = 255);
 
 	/**
 	 * @brief Makes the pixels pre multiplied, sets RGB to RGB*A then inverts A.
@@ -310,6 +343,7 @@ private:
 	int mHeight;
 	size_t mPixelSize;	//!< The number of bytes per pixel.
 	size_t mStride;	//!< The number of bytes per scan line.
+	size_t mLastlineOffset; //!< The first pixel of the last line.
 	bool mHasAlpha;
 	bool mPreMultipliedAlpha;
 
@@ -319,7 +353,6 @@ private:
 		https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 	*/
 	void DrawLineBresenham(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
-
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -529,6 +562,37 @@ private:
 
 };
 #endif //#ifdef USE_FREETYPEFONTS
+
+class MillisecondTicker
+{
+public:
+	MillisecondTicker() = default;
+    MillisecondTicker(int pMilliseconds);
+
+	/**
+	 * @brief Sets the new timeout interval, resets internal counter.
+	 * 
+	 * @param pMilliseconds 
+	 */
+	void SetTimeout(int pMilliseconds);
+
+	/**
+	 * @brief Returns true if trigger ticks is less than now
+	 */
+    bool Tick();
+    bool Tick(const clock_t pNow);
+
+	/**
+	 * @brief Calls the function if trigger ticks is less than now. 
+	 */
+    void Tick(std::function<void()> pCallback);
+    void Tick(const clock_t pNow,std::function<void()> pCallback );
+
+private:
+    clock_t mTimeout;
+    clock_t mTrigger;
+
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace tiny2d

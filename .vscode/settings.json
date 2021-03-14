@@ -49,6 +49,14 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "bit": "cpp"
+        "bit": "cpp",
+        "ctime": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "numeric": "cpp",
+        "optional": "cpp",
+        "ratio": "cpp",
+        "ranges": "cpp",
+        "stop_token": "cpp"
     }
 }
