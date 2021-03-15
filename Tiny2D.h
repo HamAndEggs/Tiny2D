@@ -577,37 +577,6 @@ private:
 };
 #endif //#ifdef USE_FREETYPEFONTS
 
-class MillisecondTicker
-{
-public:
-	MillisecondTicker() = default;
-    MillisecondTicker(int pMilliseconds);
-
-	/**
-	 * @brief Sets the new timeout interval, resets internal counter.
-	 * 
-	 * @param pMilliseconds 
-	 */
-	void SetTimeout(int pMilliseconds);
-
-	/**
-	 * @brief Returns true if trigger ticks is less than now
-	 */
-    bool Tick();
-    bool Tick(const clock_t pNow);
-
-	/**
-	 * @brief Calls the function if trigger ticks is less than now. 
-	 */
-    void Tick(std::function<void()> pCallback);
-    void Tick(const clock_t pNow,std::function<void()> pCallback );
-
-private:
-    clock_t mTimeout;
-    clock_t mTrigger;
-
-};
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace tiny2d
 	

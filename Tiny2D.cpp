@@ -2145,47 +2145,6 @@ void FreeTypeFont::RecomputeBlendTable()
 
 #endif //#ifdef USE_FREETYPEFONTS
 
-MillisecondTicker::MillisecondTicker(int pMilliseconds)
-{
-	SetTimeout(pMilliseconds);
-}
-
-void MillisecondTicker::SetTimeout(int pMilliseconds)
-{
-	assert(pMilliseconds > 0 );
-	mTimeout = (CLOCKS_PER_SEC * pMilliseconds) / 1000;
-	mTrigger = clock() + mTimeout;
-}
-
-bool MillisecondTicker::Tick()
-{
-	return Tick(clock());
-}
-
-bool MillisecondTicker::Tick(const clock_t pNow)
-{
-	if( mTrigger < pNow )
-	{
-		mTrigger += mTimeout;
-		return true;
-	}
-	return false;
-}
-
-void MillisecondTicker::Tick(std::function<void()> pCallback)
-{
-	Tick(clock(),pCallback);
-}
-
-void MillisecondTicker::Tick(const clock_t pNow,std::function<void()> pCallback )
-{
-	assert( pCallback != nullptr );
-	if( mTrigger < pNow )
-	{
-		mTrigger += mTimeout;
-		pCallback();
-	}
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 };//namespace tiny2d

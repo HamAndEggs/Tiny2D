@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include "Tiny2D.h"
+#include "TinyTools.h"
 
 static void RandomSplat(tiny2d::DrawBuffer& pBuffer)
 {
@@ -82,9 +83,8 @@ int main(int argc, char *argv[])
     DownLeft.FillCheckerBoard(16,16,200,100);
     DownRight.FillCheckerBoard(16,16,200,100);
 
-    tiny2d::MillisecondTicker ScrollTimer(50);
-
-    tiny2d::MillisecondTicker SplatTimer(250);
+    tinytools::MillisecondTicker ScrollTimer(50);
+    tinytools::MillisecondTicker SplatTimer(250);
 
     const uint8_t col[2][4] = {{155,110,90},{70,100,90}};
 
