@@ -1851,6 +1851,11 @@ void PixelFont::Print(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGree
 	};
 }
 
+void PixelFont::Print(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const std::string& pText)const
+{
+	Print(pDest,pX,pY,pRed,pGreen,pBlue,pText.c_str());
+}
+
 void PixelFont::Printf(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const
 {
 	char buf[1024];	
@@ -1864,6 +1869,11 @@ void PixelFont::Printf(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGre
 void PixelFont::Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const
 {
 	Print(pDest,pX,pY,mPenColour.r,mPenColour.g,mPenColour.b,pText);
+}
+
+void PixelFont::Print(DrawBuffer& pDest,int pX,int pY,const std::string& pText)const
+{
+	Print(pDest,pX,pY,pText.c_str());
 }
 
 void PixelFont::Printf(DrawBuffer& pDest,int pX,int pY,const char* pFmt,...)const
@@ -2100,6 +2110,11 @@ void FreeTypeFont::Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const
 		pX = DrawChar(pDest,pX,pY,*pText);
 		pText++;
 	};
+}
+
+void FreeTypeFont::Print(DrawBuffer& pDest,int pX,int pY,const std::string& pText)const
+{
+	Print(pDest,pX,pY,pText.c_str());
 }
 
 void FreeTypeFont::Printf(DrawBuffer& pDest,int pX,int pY,const char* pFmt,...)const

@@ -12,7 +12,7 @@
 class Button
 {
 public:
-	Button(int pX,int pY,int pWidth,int pHeight,const char* pText):mText(NULL)
+	Button(int pX,int pY,int pWidth,int pHeight,const char* pText)
 	{
 		mRect.FromX = pX;
 		mRect.FromY = pY;
@@ -22,11 +22,6 @@ public:
 		SetColour(150,150,150);
 		SetTextColour(0,0,0);
 		SetTextPressedColour(200,200,200);
-	}
-
-	~Button()
-	{
-		delete []mText;
 	}
 
 	void Render(tiny2d::DrawBuffer& pRT,const tiny2d::PixelFont& pFont,bool pPressed)
@@ -50,13 +45,13 @@ public:
 			pRT.DrawLineV(mRect.ToX,mRect.FromY,mRect.ToY,mDarkColour.r,mDarkColour.g,mDarkColour.b);
 		}
 	
-		if(mText)
+		if(mText.size()>0)
 		{
 			// Need to add font hot spot thing to font, IE center at x,y rendering. But for now do here in the button code.
 			int x = (mRect.FromX + mRect.ToX) / 2;
 			int y = (mRect.FromY + mRect.ToY) / 2;
 			
-			int len = strlen(mText);
+			int len = mText.size();
 			x -= (len*8)/2;
 			y -= 13/2;
 	
@@ -67,17 +62,9 @@ public:
 		}
 	}
 	
-	void SetText(const char* pText)
+	void SetText(const std::string& pText)
 	{
-		delete []mText;
-		mText = NULL;
-		if( pText )
-		{
-			int len = strlen(pText) + 1;
-			char *newText = new char[len];
-			strcpy(newText,pText);
-			mText = newText;
-		}
+		mText = pText;
 	}
 	
 	void SetTextf(const char* pFmt,...)
@@ -144,7 +131,7 @@ private:
 		uint8_t r,g,b;
 	}mLightColour,mFillColour,mDarkColour,mTextColour,mTextPressedColour;
 
-	const char* mText;
+	std::string mText;
 };
 
 int main(int argc, char *argv[])

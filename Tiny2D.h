@@ -499,10 +499,12 @@ public:
 	// These render with the passed in colour, does not change the pen colour.
 	void DrawChar(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,int pChar)const;
 	void Print(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pText)const;
+	void Print(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const std::string& pText)const;
 	void Printf(DrawBuffer& pDest,int pX,int pY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,const char* pFmt,...)const;
 
 	// These use current pen. Just a way to reduce the number of args you need to use for a property that does not change that much.
 	void Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const;
+	void Print(DrawBuffer& pDest,int pX,int pY,const std::string& pText)const;
 	void Printf(DrawBuffer& pDest,int pX,int pY,const char* pFmt,...)const;
 	
 	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
@@ -546,6 +548,7 @@ public:
 	// These render with the passed in colour, does not change the pen colour.
 	int DrawChar(DrawBuffer& pDest,int pX,int pY,char pChar)const;
 	void Print(DrawBuffer& pDest,int pX,int pY,const char* pText)const;
+	void Print(DrawBuffer& pDest,int pX,int pY,const std::string& pText)const;
 	void Printf(DrawBuffer& pDest,int pX,int pY,const char* pFmt,...)const;
 	
 	void SetPenColour(uint8_t pRed,uint8_t pGreen,uint8_t pBlue);

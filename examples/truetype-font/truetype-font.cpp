@@ -42,6 +42,11 @@ int main(int argc, char *argv[])
     FTFont2.SetBackgroundColour(BG_R,BG_G,BG_B);
     FTFont2.SetPenColour(0,255,0);
 
+    // Grab something the compiler can't optimise out.
+    char buf[32];
+    gethostname(buf,31);
+    const std::string host = buf;
+
     while( FB->GetKeepGoing() )
     {
 	    RT.Clear(BG_R,BG_G,BG_B);
@@ -54,6 +59,9 @@ int main(int argc, char *argv[])
 
         FTFont2.Print(RT,10,300,"Test Number 0123456789");
         FTFont2.Printf(RT,10,400,"Random Number %d",rand());
+
+        std::string something = "Hostname: " + host;
+        FTFont.Print(RT,10,500,something);
 
         FB->Present(RT);
         sleep(1);
