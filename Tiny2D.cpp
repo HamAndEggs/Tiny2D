@@ -1179,7 +1179,7 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeni
 
 	// Try to connect to a mouse. But only if not X11
 #ifndef USE_X11_EMULATION
-	const char* MouseDeviceName = "/dev/input/mouse0";
+	const char* MouseDeviceName = "/dev/input/event0";
 	mMouse.mDevice = open(MouseDeviceName,O_RDONLY|O_NONBLOCK);
 	if( pVerbose )
 	{
@@ -1314,26 +1314,59 @@ void FrameBuffer::ProcessSystemEvents()
 		struct input_event ev;
 
 		const int nBytes = read(mMouse.mDevice,&ev,sizeof(ev));
-		if( nBytes > 0 && ev.type == EV_ABS )
+
+		if( mVerbose )
+		{
+			// EV_SYN is a seperator of events.
+			if( nBytes > 0 && ev.type != EV_ABS && ev.type != EV_KEY && ev.type != EV_SYN )
+			{
+				std::cout << std::hex << ev.type << " " << ev.code << " " << ev.value << "\n";
+			}
+		}
+
+		if( nBytes > 0 )
 		{
 			bool button = mMouse.mPreviousButton;
 			int x = mMouse.mPreviousX;
 			int y = mMouse.mPreviousY;
 
-			switch (ev.code)
+			switch( ev.type )
 			{
-			case ABS_X:
-				x = ev.value;
+			case EV_KEY:
+				switch (ev.code)
+				{
+				case BTN_TOUCH:
+					button = ev.value != 0;
+					break;
+					
+				default:
+					if( mVerbose )
+					{
+						std::cout << "EV_KEY: " << std::hex << ev.code << " " << ev.value << "\n";
+					}
+					break;
+				}
 				break;
 
-			case ABS_Y:
-				y = ev.value;
-				break;
+			case EV_ABS:
+				switch (ev.code)
+				{
+				case ABS_X:
+					x = ev.value;
+					break;
 
-			case BTN_LEFT:
-				button = ev.value != 0;
+				case ABS_Y:
+					y = ev.value;
+					break;
+
+					if( mVerbose )
+					{
+						std::cout << "EV_ABS: " << std::hex << ev.code << " " << ev.value << "\n";
+					}
+				}
 				break;
 			}
+
 
 			if( mMouse.mPreviousButton != button )
 			{
@@ -1349,6 +1382,10 @@ void FrameBuffer::ProcessSystemEvents()
 			}
 			else if( mMouse.mPreviousX != x || mMouse.mPreviousY != y )
 			{
+				mMouse.mPreviousButton = button;
+				mMouse.mPreviousX = x;
+				mMouse.mPreviousY = y;
+
 				SystemEventData data(SYSTEM_EVENT_MOUSE_MOVE);
 				data.mMouse.X = x;
 				data.mMouse.Y = y;

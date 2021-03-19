@@ -224,6 +224,8 @@ int main(int argc, char *argv[])
 		GreenButton.Render(RT,TheFont,MouseX,MouseY,MouseClick);
 		QuitButton.Render(RT,TheFont,MouseX,MouseY,MouseClick);
 
+		RT.DrawCircle(MouseX,MouseY,20,255,255,255);
+
 		if( MouseClick && QuitButton.GetPointIsIn(MouseX,MouseY) )
 		{
 			FB->OnApplicationExitRequest();
