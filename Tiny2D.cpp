@@ -24,6 +24,7 @@
 
 #include <linux/fb.h>
 #include <linux/videodev2.h>
+#include <linux/input.h>
 
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -1178,10 +1179,26 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeni
 
 	// Try to connect to a mouse. But only if not X11
 #ifndef USE_X11_EMULATION
-	mMouse.mDevice = open("/dev/input/mice",O_RDONLY|O_NONBLOCK);
-	if( pVerbose && mMouse.mDevice == -1 )
+	const char* MouseDeviceName = "/dev/input/mouse0";
+	mMouse.mDevice = open(MouseDeviceName,O_RDONLY|O_NONBLOCK);
+	if( pVerbose )
 	{
-		std::clog << "Failed to open mouse device /dev/input/mice\n";
+		if(  mMouse.mDevice >  0 )
+		{
+			char name[256] = "Unknown";
+			if( ioctl(mMouse.mDevice, EVIOCGNAME(sizeof(name)), name) == 0 )
+			{
+				std::clog << "Reading mouse from: handle = " << mMouse.mDevice << " name = " << name << "\n";
+			}
+			else
+			{
+				std::clog << "Open mouse device" << MouseDeviceName << "\n" ;
+			}
+		}
+		else
+		{
+			std::clog << "Failed to open mouse device " << MouseDeviceName << "\n";
+		}
 	}
 #endif
 }
@@ -1294,16 +1311,29 @@ void FrameBuffer::ProcessSystemEvents()
 	// We don't bother to read the mouse if no pEventHandler has been registered. Would be a waste of time.
 	if( mMouse.mDevice > 0 && mSystemEventHandler )
 	{
-		uint8_t data[3];
-		const int nBytes = read(mMouse.mDevice, data, sizeof(data));
-		if( nBytes == 3 )
-		{
-			const bool button = data[0] & 0x1;
-//			right = data[0] & 0x2;
-//			middle = data[0] & 0x4;
+		struct input_event ev;
 
-			const int x = data[1];
-			const int y = data[2];
+		const int nBytes = read(mMouse.mDevice,&ev,sizeof(ev));
+		if( nBytes > 0 && ev.type == EV_ABS )
+		{
+			bool button = mMouse.mPreviousButton;
+			int x = mMouse.mPreviousX;
+			int y = mMouse.mPreviousY;
+
+			switch (ev.code)
+			{
+			case ABS_X:
+				x = ev.value;
+				break;
+
+			case ABS_Y:
+				y = ev.value;
+				break;
+
+			case BTN_LEFT:
+				button = ev.value != 0;
+				break;
+			}
 
 			if( mMouse.mPreviousButton != button )
 			{
