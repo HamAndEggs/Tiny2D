@@ -1180,15 +1180,15 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeni
 	// Try to connect to a mouse. But only if not X11
 #ifndef USE_X11_EMULATION
 	const char* MouseDeviceName = "/dev/input/event0";
-	mMouse.mDevice = open(MouseDeviceName,O_RDONLY|O_NONBLOCK);
+	mPointer.mDevice = open(MouseDeviceName,O_RDONLY|O_NONBLOCK);
 	if( pVerbose )
 	{
-		if(  mMouse.mDevice >  0 )
+		if(  mPointer.mDevice >  0 )
 		{
 			char name[256] = "Unknown";
-			if( ioctl(mMouse.mDevice, EVIOCGNAME(sizeof(name)), name) == 0 )
+			if( ioctl(mPointer.mDevice, EVIOCGNAME(sizeof(name)), name) == 0 )
 			{
-				std::clog << "Reading mouse from: handle = " << mMouse.mDevice << " name = " << name << "\n";
+				std::clog << "Reading mouse from: handle = " << mPointer.mDevice << " name = " << name << "\n";
 			}
 			else
 			{
@@ -1309,26 +1309,17 @@ void FrameBuffer::ProcessSystemEvents()
 	}
 #else
 	// We don't bother to read the mouse if no pEventHandler has been registered. Would be a waste of time.
-	if( mMouse.mDevice > 0 && mSystemEventHandler )
+	if( mPointer.mDevice > 0 && mSystemEventHandler )
 	{
 		struct input_event ev;
-
-		const int nBytes = read(mMouse.mDevice,&ev,sizeof(ev));
-
-		if( mVerbose )
+		// Grab all messages and process befor going to next frame.
+		while( read(mPointer.mDevice,&ev,sizeof(ev)) > 0 )
 		{
 			// EV_SYN is a seperator of events.
-			if( nBytes > 0 && ev.type != EV_ABS && ev.type != EV_KEY && ev.type != EV_SYN )
-			{
+			if( mVerbose && ev.type != EV_ABS && ev.type != EV_KEY && ev.type != EV_SYN )
+			{// Anything I missed? 
 				std::cout << std::hex << ev.type << " " << ev.code << " " << ev.value << "\n";
 			}
-		}
-
-		if( nBytes > 0 )
-		{
-			bool button = mMouse.mPreviousButton;
-			int x = mMouse.mPreviousX;
-			int y = mMouse.mPreviousY;
 
 			switch( ev.type )
 			{
@@ -1336,14 +1327,10 @@ void FrameBuffer::ProcessSystemEvents()
 				switch (ev.code)
 				{
 				case BTN_TOUCH:
-					button = ev.value != 0;
-					break;
-					
-				default:
-					if( mVerbose )
-					{
-						std::cout << "EV_KEY: " << std::hex << ev.code << " " << ev.value << "\n";
-					}
+					SystemEventData data((ev.value != 0) ? SYSTEM_EVENT_POINTER_DOWN : SYSTEM_EVENT_POINTER_UP);
+					data.mPointer.X = mPointer.mCurrent.x;
+					data.mPointer.Y = mPointer.mCurrent.y;
+					mSystemEventHandler(data);
 					break;
 				}
 				break;
@@ -1352,44 +1339,18 @@ void FrameBuffer::ProcessSystemEvents()
 				switch (ev.code)
 				{
 				case ABS_X:
-					x = ev.value;
+					mPointer.mCurrent.x = ev.value;
 					break;
 
 				case ABS_Y:
-					y = ev.value;
+					mPointer.mCurrent.y = ev.value;
 					break;
-
-					if( mVerbose )
-					{
-						std::cout << "EV_ABS: " << std::hex << ev.code << " " << ev.value << "\n";
-					}
 				}
+				SystemEventData data(SYSTEM_EVENT_POINTER_MOVE);
+				data.mPointer.X = mPointer.mCurrent.x;
+				data.mPointer.Y = mPointer.mCurrent.y;
+				mSystemEventHandler(data);
 				break;
-			}
-
-
-			if( mMouse.mPreviousButton != button )
-			{
-				mMouse.mPreviousButton = button;
-				mMouse.mPreviousX = x;
-				mMouse.mPreviousY = y;
-
-				SystemEventData data(button ? SYSTEM_EVENT_MOUSE_BUTTON_DOWN : SYSTEM_EVENT_MOUSE_BUTTON_UP);
-				data.mMouse.X = x;
-				data.mMouse.Y = y;
-				data.mMouse.Button = true;
-				mSystemEventHandler(data);
-			}
-			else if( mMouse.mPreviousX != x || mMouse.mPreviousY != y )
-			{
-				mMouse.mPreviousButton = button;
-				mMouse.mPreviousX = x;
-				mMouse.mPreviousY = y;
-
-				SystemEventData data(SYSTEM_EVENT_MOUSE_MOVE);
-				data.mMouse.X = x;
-				data.mMouse.Y = y;
-				mSystemEventHandler(data);
 			}
 		}   
 	}
@@ -1575,9 +1536,9 @@ void X11FrameBufferEmulation::ProcessSystemEvents(FrameBuffer::SystemEventHandle
 		case MotionNotify:// Mouse movement
 			if( pEventHandler )
 			{
-				SystemEventData data(SYSTEM_EVENT_MOUSE_MOVE);
-				data.mMouse.X = e.xmotion.x;
-				data.mMouse.Y = e.xmotion.y;
+				SystemEventData data(SYSTEM_EVENT_POINTER_MOVE);
+				data.mPointer.X = e.xmotion.x;
+				data.mPointer.Y = e.xmotion.y;
 				pEventHandler(data);
 			}
 			break;
@@ -1585,10 +1546,9 @@ void X11FrameBufferEmulation::ProcessSystemEvents(FrameBuffer::SystemEventHandle
 		case ButtonPress:
 			if( pEventHandler )
 			{
-				SystemEventData data(SYSTEM_EVENT_MOUSE_BUTTON_DOWN);
-				data.mMouse.X = e.xbutton.x;
-				data.mMouse.Y = e.xbutton.y;
-				data.mMouse.Button = e.xbutton.button;
+				SystemEventData data(SYSTEM_EVENT_POINTER_DOWN);
+				data.mPointer.X = e.xbutton.x;
+				data.mPointer.Y = e.xbutton.y;
 				pEventHandler(data);
 			}
 			break;
@@ -1596,10 +1556,9 @@ void X11FrameBufferEmulation::ProcessSystemEvents(FrameBuffer::SystemEventHandle
 		case ButtonRelease:
 			if( pEventHandler )
 			{
-				SystemEventData data(SYSTEM_EVENT_MOUSE_BUTTON_UP);
-				data.mMouse.X = e.xbutton.x;
-				data.mMouse.Y = e.xbutton.y;
-				data.mMouse.Button = e.xbutton.button;
+				SystemEventData data(SYSTEM_EVENT_POINTER_UP);
+				data.mPointer.X = e.xbutton.x;
+				data.mPointer.Y = e.xbutton.y;
 				pEventHandler(data);
 			}
 			break;

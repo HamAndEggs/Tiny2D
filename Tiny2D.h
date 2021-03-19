@@ -375,16 +375,18 @@ struct X11FrameBufferEmulation;
 /**
  * @brief The different type of events that the application can respond to.
  * See setSystemEventHandler function in FrameBuffer class.
+ * I would like to add more custom events too like network status events. Time will tell.
+ * All event processing is done at the end of the frame in the main thread.
  */
 enum SystemEventType
 {
 	// Generic system events, like ctrl + c
 	SYSTEM_EVENT_EXIT_REQUEST,	//!< User closed the window or pressed ctrl + c
 
-	// Mouse events.
-	SYSTEM_EVENT_MOUSE_MOVE,
-	SYSTEM_EVENT_MOUSE_BUTTON_DOWN,
-	SYSTEM_EVENT_MOUSE_BUTTON_UP,
+	// Generic display mouse or touch events.
+	SYSTEM_EVENT_POINTER_MOVE,
+	SYSTEM_EVENT_POINTER_DOWN,
+	SYSTEM_EVENT_POINTER_UP
 };
 
 /**
@@ -401,8 +403,7 @@ struct SystemEventData
 	{
 		int X = 0;
 		int Y = 0;
-		int Button = 0;	//!< Only valid for button events.
-	}mMouse;
+	}mPointer;
 
 	SystemEventData(SystemEventType pType) : mType(pType){}
 };
@@ -529,15 +530,22 @@ private:
 	const struct fb_var_screeninfo mVariableScreenInfo;
 	const bool mVerbose;
 
+	/**
+	 * @brief Information about the mouse driver
+	 */
 	struct
 	{
 		int mDevice = 0; //!< File handle to /dev/input/mice
 
-		// Previous bits used to send events only when something has changed
-		int mPreviousX = 0;
-		int mPreviousY = 0;
-		bool mPreviousButton = false;
-	}mMouse;
+		/**
+		 * @brief Maintains the current known values. Because we get many messages.
+		 */
+		struct
+		{
+			int x = 0;
+			int y = 0;
+		}mCurrent;
+	}mPointer;
 
 	// I'm not a fan of these statics. I will try to avoid them.
 	// The problem is that the OS ignels don't allow me to pass user data.

@@ -182,28 +182,30 @@ int main(int argc, char *argv[])
 
 	int MouseX = 0,MouseY = 0;
 	bool MouseClick = false;
-	FB->SetSystemEventHandler([&MouseX,&MouseY,&MouseClick](const tiny2d::SystemEventData& pData)
+	bool ButtonPressed = false;
+	FB->SetSystemEventHandler([&MouseX,&MouseY,&MouseClick,&ButtonPressed](const tiny2d::SystemEventData& pData)
 	{
 		switch(pData.mType)
 		{
 		case tiny2d::SYSTEM_EVENT_EXIT_REQUEST:
 			break;
 
-		case tiny2d::SYSTEM_EVENT_MOUSE_MOVE:
-			MouseX = pData.mMouse.X;
-			MouseY = pData.mMouse.Y;
+		case tiny2d::SYSTEM_EVENT_POINTER_MOVE:
+			MouseX = pData.mPointer.X;
+			MouseY = pData.mPointer.Y;
 			break;
 
-		case tiny2d::SYSTEM_EVENT_MOUSE_BUTTON_UP:
-			MouseX = pData.mMouse.X;
-			MouseY = pData.mMouse.Y;
+		case tiny2d::SYSTEM_EVENT_POINTER_UP:
+			MouseX = pData.mPointer.X;
+			MouseY = pData.mPointer.Y;
 			MouseClick = false;
+			ButtonPressed = true;
 			break;
 
-		case tiny2d::SYSTEM_EVENT_MOUSE_BUTTON_DOWN:
-			MouseX = pData.mMouse.X;
-			MouseY = pData.mMouse.Y;
-			MouseClick = pData.mMouse.Button == 1;
+		case tiny2d::SYSTEM_EVENT_POINTER_DOWN:
+			MouseX = pData.mPointer.X;
+			MouseY = pData.mPointer.Y;
+			MouseClick = true;
 			break;
 		}
 	});
@@ -211,12 +213,9 @@ int main(int argc, char *argv[])
 	int n = 149;
 	while(FB->GetKeepGoing())
 	{
-		if( ((n)>>4) != ((n-1)>>4) )
-		{
-			RT.FillRectangle(9*8*5,0,19*8*5,13*5,150,150,150);
-			TheFont.SetPixelSize(5);
-			TheFont.Printf(RT,0,0,"Counting %d",n>>4);
-		}
+		RT.Clear(150,150,150);
+		TheFont.SetPixelSize(5);
+		TheFont.Printf(RT,0,0,"Counting %d",n);
 
 		TheFont.SetPixelSize(1);
 
@@ -224,15 +223,28 @@ int main(int argc, char *argv[])
 		GreenButton.Render(RT,TheFont,MouseX,MouseY,MouseClick);
 		QuitButton.Render(RT,TheFont,MouseX,MouseY,MouseClick);
 
-		RT.DrawCircle(MouseX,MouseY,20,255,255,255);
+		RT.FillCircle(MouseX,MouseY,20,255,255,255);
 
-		if( MouseClick && QuitButton.GetPointIsIn(MouseX,MouseY) )
+		if( ButtonPressed )// Most basic GUI
 		{
-			FB->OnApplicationExitRequest();
+			ButtonPressed = false;
+			if( TheButton.GetPointIsIn(MouseX,MouseY) )
+			{
+				n += rand()&0xff;
+			}
+
+			if( GreenButton.GetPointIsIn(MouseX,MouseY) )
+			{
+				n -= rand()&0xff;
+			}
+
+			if( QuitButton.GetPointIsIn(MouseX,MouseY) )
+			{
+				FB->OnApplicationExitRequest();
+			}
 		}
 		
 		FB->Present(RT);
-		n++;
 	};
 
 	delete FB;
