@@ -1,9 +1,5 @@
 
 #include <iostream>
-#include <cstdlib>
-#include <time.h>
-#include <unistd.h>
-#include <cstdarg>
 #include <string.h>
 
 #include "Tiny2D.h"

@@ -1,12 +1,9 @@
 
 #include <iostream>
+#include <chrono>
 
-#include <iostream>
-#include <cstdlib>
-#include <time.h>
 #include <unistd.h>
 #include <cstdarg>
-#include <string.h>
 
 #include "../../Tiny2D.h"
 
@@ -210,15 +207,21 @@ int main(int argc, char *argv[])
 		}
 	});
 
+	int FPS = 0;
 	int n = 149;
 	while(FB->GetKeepGoing())
 	{
+		auto frameStart = std::chrono::system_clock::now();
+
 		RT.Clear(150,150,150);
 		TheFont.SetPixelSize(5);
 		TheFont.Printf(RT,0,0,"Counting %d",n);
 
-		TheFont.SetPixelSize(1);
 
+		TheFont.SetPixelSize(1);
+		TheFont.Printf(RT,RT.GetWidth() - 60,0,"FPS %d",FPS);
+
+		TheFont.SetPixelSize(1);
 		TheButton.Render(RT,TheFont,MouseX,MouseY,MouseClick);
 		GreenButton.Render(RT,TheFont,MouseX,MouseY,MouseClick);
 		QuitButton.Render(RT,TheFont,MouseX,MouseY,MouseClick);
@@ -245,6 +248,11 @@ int main(int argc, char *argv[])
 		}
 		
 		FB->Present(RT);
+
+		auto frameEnd = std::chrono::system_clock::now();
+		std::chrono::duration<float,std::milli> time = (frameEnd - frameStart);
+		FPS = (int)(1000.0f / time.count());
+
 	};
 
 	delete FB;

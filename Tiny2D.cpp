@@ -214,6 +214,8 @@ DrawBuffer::DrawBuffer(const FrameBuffer* pFB)
 {
 	assert( pFB );
 	Resize(pFB->GetWidth(),pFB->GetHeight(),pFB->GetPixelSize(),false,false);
+	// Make sure my code created an optimal native format draw buffer.
+	assert( pFB->GetIsNativeFormat(*this) );
 }
 
 DrawBuffer::DrawBuffer() :
@@ -1240,12 +1242,18 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 	const size_t GreenShift = mVariableScreenInfo.green.offset;
 	const size_t BlueShift = mVariableScreenInfo.blue.offset;
 
-	if( mDisplayBufferPixelSize == pImage.GetPixelSize() &&
-		mDisplayBufferStride == pImage.GetStride() &&
-		mDisplayBufferSize <= pImage.mPixels.size() )
+	if( GetIsNativeFormat(pImage) )
 	{// Early out...
 		// Copy mDisplayBufferSize bytes, not the number of source, then we can't over flow what we have to write to.
 		memcpy(mDisplayBuffer,pImage.mPixels.data(),mDisplayBufferSize);
+
+#ifndef NDEBUG
+		if( mVerbose && mReportedPresentSpeed == false )
+		{
+			mReportedPresentSpeed = true;
+			std::clog << "Optimal frame buffer copy mode taken\n";
+		}
+#endif
 	}
 	else if( mDisplayBufferPixelSize == 2 )
 	{
@@ -1266,6 +1274,14 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 				dst[x] = pixel;
 			}
 		}
+
+#ifndef NDEBUG
+		if( mVerbose && mReportedPresentSpeed == false )
+		{
+			mReportedPresentSpeed = true;
+			std::clog << "Slow 16Bit frame buffer copy mode taken\n";
+		}
+#endif
 	}
 	else
 	{
@@ -1290,6 +1306,14 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 				pixel[ RED_OFFSET ]		= src[2];
 			}
 		}
+
+#ifndef NDEBUG
+		if( mVerbose && mReportedPresentSpeed == false )
+		{
+			mReportedPresentSpeed = true;
+			std::clog << "Sub optimal scanline frame buffer copy mode taken\n";
+		}
+#endif
 	}
 
 	// Now do event processing.

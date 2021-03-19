@@ -463,10 +463,18 @@ public:
 
 	/**
 	 * @brief Get the byte size of a line of pixels in the buffer.
-	 * 
-	 * @return int 
 	 */
 	int GetStride()const{return mDisplayBufferStride;}
+
+	/**
+	 * @brief Will return true if the presentation of the draw buffer to the display can take an optimal route. (memcpy the fastest!)
+	 */
+	bool GetIsNativeFormat(const DrawBuffer& pBuffer)const
+	{
+		return	mDisplayBufferPixelSize == pBuffer.GetPixelSize() &&
+				mDisplayBufferStride == pBuffer.GetStride() &&
+				mDisplayBufferSize <= pBuffer.mPixels.size();
+	}
 
 	/**
 	 * @brief See if the app main loop should keep going.
@@ -529,6 +537,7 @@ private:
 
 	const struct fb_var_screeninfo mVariableScreenInfo;
 	const bool mVerbose;
+	bool mReportedPresentSpeed = false; //!< Used for verbose mode, will tell you the present screen route taken when on using linux frame buffer device.
 
 	/**
 	 * @brief Information about the mouse driver
