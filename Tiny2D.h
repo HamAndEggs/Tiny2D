@@ -371,6 +371,42 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct X11FrameBufferEmulation;
+
+/**
+ * @brief The different type of events that the application can respond to.
+ * See setSystemEventHandler function in FrameBuffer class.
+ */
+enum SystemEventType
+{
+	// Generic system events, like ctrl + c
+	SYSTEM_EVENT_EXIT_REQUEST,	//!< User closed the window or pressed ctrl + c
+
+	// Mouse events.
+	SYSTEM_EVENT_MOUSE_MOVE,
+	SYSTEM_EVENT_MOUSE_BUTTON_DOWN,
+	SYSTEM_EVENT_MOUSE_BUTTON_UP,
+};
+
+/**
+ * @brief The data relating to a system event.
+ * I've implemented some very basic events. Not going to over do it. Just passes on some common ones.
+ * If you need to track the last know state of something then you'll have to do that. If I try it may not be how you expect it to work.
+ * I just say when something changes.
+ */
+struct SystemEventData
+{
+	const SystemEventType mType;
+
+	struct
+	{
+		int X = 0;
+		int Y = 0;
+		int Button = 0;	//!< Only valid for button events.
+	}mMouse;
+
+	SystemEventData(SystemEventType pType) : mType(pType){}
+};
+
 /**
  * @brief Represents the linux frame buffer display.
  * Is able to deal with and abstract out the various pixel formats. 
@@ -380,6 +416,8 @@ struct X11FrameBufferEmulation;
 class FrameBuffer
 {
 public:
+
+	typedef std::function<void(const SystemEventData& pEvent)> SystemEventHandler;
 
 	/**
 	 * @brief Creates and opens a FrameBuffer object.
@@ -394,6 +432,9 @@ public:
 	 */
 	static FrameBuffer* Open(bool pVerbose = false);
 
+	/**
+	 * @brief Clean up code. You must delete your object on exit!
+	 */
 	~FrameBuffer();
 
 	/**
@@ -404,32 +445,53 @@ public:
 	 */
 	bool GetVerbose()const{return mVerbose;}
 
-	/*
-		Returns the width of the frame buffer.
+	/**
+		@brief Returns the width of the frame buffer.
 	*/
 	int GetWidth()const{return mWidth;}
 
-	/*
-		Returns the height of the frame buffer.
+	/**
+		@brief Returns the height of the frame buffer.
 	*/
 	int GetHeight()const{return mHeight;}
 
+	/**
+	 * @brief Get the byte size of a pixel
+	 */
 	int GetPixelSize()const{return mDisplayBufferPixelSize;}
+
+	/**
+	 * @brief Get the byte size of a line of pixels in the buffer.
+	 * 
+	 * @return int 
+	 */
 	int GetStride()const{return mDisplayBufferStride;}
 
 	/**
 	 * @brief See if the app main loop should keep going.
-	 * 
+	 * This is set internally when the event EVENT_EXIT_REQUEST is triggered. 
+	 * This function means if you're doing a simple app you don't have register an event handler. Makes life easier. :)
 	 * @return true All is ok, so keep running.
 	 * @return false Either the user requested an exit with ctrl+c or there was an error.
 	 */
 	bool GetKeepGoing()const{return FrameBuffer::mKeepGoing;}
 
 	/**
-	 * @brief Sets the flag for the main loop to false.
-	 * You can only set it to false to prevet miss uses.
+	 * @brief Gets the handler that is used to send event information to the application from the system.
 	 */
-	static void SetKeepGoingFalse(){FrameBuffer::mKeepGoing = false;}
+	SystemEventHandler& GetSystemEventHandler(){return mSystemEventHandler;}
+
+	/**
+	 * @brief Sets the handler for system events
+	 * 
+	 * @param pOnMouseMove 
+	 */
+	void SetSystemEventHandler(SystemEventHandler pEventHandler){mSystemEventHandler = pEventHandler;}
+
+	/**
+	 * @brief Sets the flag for the main loop to false and fires the SYSTEM_EVENT_EXIT_REQUEST
+	 */
+	static void OnApplicationExitRequest();
 
 	/**
 	 * @brief Depending on the buffering mode and the render environment will display the changes to the frame buffer on screen.
@@ -438,15 +500,16 @@ public:
 	void Present(const DrawBuffer& pImage);
 
 private:
+
 	/**
 	 * @brief Construct a new Frame Buffer object
-	 * @param pFile 
-	 * @param pDisplayBuffer 
-	 * @param pFixInfo 
-	 * @param pScreenInfo 
-	 * @param pVerbose 
 	 */
 	FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
+
+	/**
+	 * @brief Check for system events that the application my want.
+	 */
+	void ProcessSystemEvents();
 
 	/**
 	 * @brief Handle ctrl + c event.
@@ -466,10 +529,21 @@ private:
 	const struct fb_var_screeninfo mVariableScreenInfo;
 	const bool mVerbose;
 
-	/**
-	 * @brief set to false by the ctrl + c handler.
-	 */
-	static bool mKeepGoing;
+	struct
+	{
+		int mDevice = 0; //!< File handle to /dev/input/mice
+
+		// Previous bits used to send events only when something has changed
+		int mPreviousX = 0;
+		int mPreviousY = 0;
+		bool mPreviousButton = false;
+	}mMouse;
+
+	// I'm not a fan of these statics. I will try to avoid them.
+	// The problem is that the OS ignels don't allow me to pass user data.
+	// I don't want an internal pointer to self either.
+	static SystemEventHandler mSystemEventHandler; //!< Where all events that we are intrested in are routed.
+	static bool mKeepGoing; //!< Set to false by the ctrl + c handler.
 
 	/**
 	 * @brief I trap ctrl + c. Because someone may also do this I record their handler and call it when mine is.

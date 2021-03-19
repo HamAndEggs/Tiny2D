@@ -58,5 +58,6 @@
         "ratio": "cpp",
         "ranges": "cpp",
         "stop_token": "cpp"
-    }
+    },
+    "C_Cpp.default.defines": ["USE_FREETYPEFONTS","xUSE_X11_EMULATION"]
 }
