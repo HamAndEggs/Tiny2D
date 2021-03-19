@@ -1,0 +1,56 @@
+{
+    "source_files": [
+        "touch-test.cpp",
+        "../../Tiny2D.cpp"
+    ],
+	"configurations":
+	{
+		"release":
+		{
+			"include":
+			[
+				"/usr/include/",
+				"../../"
+			],
+			"libs":
+			[
+				"stdc++"
+			]
+		},
+		"debug":
+		{
+			"include":
+			[
+				"/usr/include/",
+				"../../"
+			],
+			"libs":
+			[
+				"stdc++"
+			]
+		},
+		"x11":
+		{
+            "optimisation": "0",
+            "debug_level": "2",
+            "warnings_as_errors": false,
+            "enable_all_warnings": true,
+            "fatal_errors": false,
+			"include":
+			[
+				"/usr/include/",
+				"../../"
+			],
+			"libs":
+			[
+				"stdc++",
+				"X11"
+			],
+			"define": [
+				"DEBUG_BUILD",
+				"USE_X11_EMULATION"
+			]
+		}
+	},
+    "version": "0.0.1"
+}
