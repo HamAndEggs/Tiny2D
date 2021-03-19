@@ -1178,7 +1178,7 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeni
 
 	// Try to connect to a mouse. But only if not X11
 #ifndef USE_X11_EMULATION
-	mMouse.mDevice = open("/dev/input/mice",O_RDONLY);
+	mMouse.mDevice = open("/dev/input/mice",O_RDONLY|O_NONBLOCK);
 	if( pVerbose && mMouse.mDevice == -1 )
 	{
 		std::clog << "Failed to open mouse device /dev/input/mice\n";
