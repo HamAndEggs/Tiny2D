@@ -80,14 +80,6 @@ int main(int argc, char *argv[])
 				RT.FillRoundedRectangle(FromX,FromY,ToX,ToY,r,col[c][0],col[c][1],col[c][2]);
 		}
 
-		RT.FillRectangle(200,20,600,220,0,0,0);
-		RT.FillRectangle(220,40,580,200,0,255,0);
-		RT.DrawRectangle(230,50,570,190,255,0,255);
-
-		RT.FillRoundedRectangle(200,320,600,520,20,0,0,0);
-		RT.FillRoundedRectangle(220,340,580,500,20,0,255,0);
-		RT.DrawRoundedRectangle(230,350,570,490,20,255,0,255);
-
 		{
 			int cX = (int)(70.0f + ((RT.GetWidth()-130.0f) * anim));
 			RT.FillCircle(cX,90,50,0,0,0);
@@ -96,23 +88,51 @@ int main(int argc, char *argv[])
 		}
 
 		Font.SetPenColour(255,255,255);
-		Font.Print(RT,100,100,"This is a simple pixel font!");
+		Font.Print(RT,100,80,"This is a simple pixel font!");
 
-		RT.FillRectangle(200,200,800,400,0,0,0);
-		RT.FillRectangle(220,220,780,380,255,255,255);
+		{
+			const int x = 50;
+			const int y = 140;
 
-		RT.FillRectangle(250,250,350,350,255,0,0);
-		RT.FillRectangle(450,250,550,350,0,255,0);
-		RT.FillRectangle(650,250,750,350,0,0,255);
+			RT.FillRectangle(x,y,x+460,y+160,0,0,0);
+			RT.FillRectangle(x+10,y+10,x+450,y+150,255,255,255);
 
-		Font.SetPenColour(255,0,0);
-		Font.Print(RT,250,300,"RED");
+			RT.FillRectangle(x+20,y+30,x+140,y+130,255,0,0);
+			RT.FillRectangle(x+170,y+30,x+290,y+130,0,255,0);
+			RT.FillRectangle(x+320,y+30,x+440,y+130,0,0,255);
 
-		Font.SetPenColour(0,255,0);
-		Font.Print(RT,450,300,"GREEN");
+			Font.SetPenColour(255,0,0);
+			Font.Print(RT,x+20,y+90,"RED");
 
-		Font.SetPenColour(0,0,255);
-		Font.Print(RT,650,300,"BLUE");
+			Font.SetPenColour(0,255,0);
+			Font.Print(RT,x+170,y+90,"GREEN");
+
+			Font.SetPenColour(0,0,255);
+			Font.Print(RT,x+320,y+90,"BLUE");
+		}
+
+		{
+			const int x = (RT.GetWidth() / 2) - (522/2);
+			const int y = 400;
+
+			RT.FillRectangle(x,y,x+552,y+150,0,0,0);
+			RT.FillRectangle(x+10,y+10,x+542,y+140,255,255,255);
+
+			for(int n = 0 ; n < 256 ; n++ )
+			{
+				const int i = x + 20 + (n*2);
+				RT.DrawLineV(i,y+20,y+50,n,0,0);
+				RT.DrawLineV(i+1,y+20,y+50,n,0,0);
+
+				RT.DrawLineV(i,y+60,y+90,0,n,0);
+				RT.DrawLineV(i+1,y+60,y+90,0,n,0);
+
+				RT.DrawLineV(i,y+100,y+130,0,0,n);
+				RT.DrawLineV(i+1,y+100,y+130,0,0,n);
+
+			}
+
+		}
 
 		FB->Present(RT);
 	}
