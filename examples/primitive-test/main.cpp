@@ -82,17 +82,19 @@ int main(int argc, char *argv[])
 
 		{
 			int cX = (int)(70.0f + ((RT.GetWidth()-130.0f) * anim));
-			RT.FillCircle(cX,90,50,0,0,0);
-			RT.FillCircle(cX,90,40,255,0,0);
-			RT.DrawCircle(cX,90,30,0,0,255);
+			const int y = RT.GetHeight() - 60;
+			RT.FillCircle(cX,y,50,0,0,0);
+			RT.FillCircle(cX,y,40,255,0,0);
+			RT.DrawCircle(cX,y,30,0,0,255);
+
+			Font.SetPenColour(255,255,255);
+			Font.Print(RT,100,y,"This is a simple pixel font!");
+
 		}
 
-		Font.SetPenColour(255,255,255);
-		Font.Print(RT,100,80,"This is a simple pixel font!");
-
 		{
-			const int x = 50;
-			const int y = 140;
+			const int x = 20;
+			const int y = 20;
 
 			RT.FillRectangle(x,y,x+460,y+160,0,0,0);
 			RT.FillRectangle(x+10,y+10,x+450,y+150,255,255,255);
@@ -113,7 +115,7 @@ int main(int argc, char *argv[])
 
 		{
 			const int x = (RT.GetWidth() / 2) - (522/2);
-			const int y = 400;
+			const int y = (RT.GetHeight() / 2) - (150/2);
 
 			RT.FillRectangle(x,y,x+552,y+150,0,0,0);
 			RT.FillRectangle(x+10,y+10,x+542,y+140,255,255,255);
@@ -131,7 +133,6 @@ int main(int argc, char *argv[])
 				RT.DrawLineV(i+1,y+100,y+130,0,0,n);
 
 			}
-
 		}
 
 		FB->Present(RT);
