@@ -1428,8 +1428,12 @@ X11FrameBufferEmulation::~X11FrameBufferEmulation()
 	mWindowReady = false;
 
 	// Do this after we have set the message pump flag to false so the events generated will case XNextEvent to return.
+	delete []mDisplayBuffer;
+	mDisplayBufferImage->data = NULL;// Keep valgrind happy. If I allow XDestroyImage to free the buffer, which it will, valgrind gets it's nickers in a twist. X11 fault!
+	XDestroyImage(mDisplayBufferImage);
 	XDestroyWindow(mDisplay,mWindow);
 	XCloseDisplay(mDisplay);
+
 }
 
 bool X11FrameBufferEmulation::Open(bool pVerbose)
@@ -1487,7 +1491,7 @@ bool X11FrameBufferEmulation::Open(bool pVerbose)
 	XSelectInput(mDisplay, mWindow, ExposureMask | KeyPressMask | StructureNotifyMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask );
 	XMapWindow(mDisplay, mWindow);
 
-	mDisplayBuffer = (uint8_t*)malloc(mFixInfo.smem_len);
+	mDisplayBuffer = new uint8_t[mFixInfo.smem_len];
 	memset(mDisplayBuffer,0,mFixInfo.smem_len);
 
 	Visual *visual=DefaultVisual(mDisplay, 0);
