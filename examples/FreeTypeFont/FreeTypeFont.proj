@@ -1,6 +1,6 @@
 {
     "source_files": [
-        "truetype-font.cpp",
+        "FreeTypeFont.cpp",
 		"../../Tiny2D.cpp"
     ],
     "configurations": {
