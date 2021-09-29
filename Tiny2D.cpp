@@ -200,11 +200,6 @@ void TweenColoursRGB(uint8_t pFromRed,uint8_t pFromGreen, uint8_t pFromBlue,uint
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DrawBuffer Implementation.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-DrawBuffer::DrawBuffer(int pWidth, int pHeight, size_t pPixelSize,bool pHasAlpha,bool pPreMultipliedAlpha)
-{
-	Resize(pWidth,pHeight,pPixelSize,pHasAlpha,pPreMultipliedAlpha);
-}
-
 DrawBuffer::DrawBuffer(int pWidth, int pHeight,bool pHasAlpha,bool pPreMultipliedAlpha)
 {
 	Resize(pWidth,pHeight,pHasAlpha,pPreMultipliedAlpha);
@@ -213,9 +208,7 @@ DrawBuffer::DrawBuffer(int pWidth, int pHeight,bool pHasAlpha,bool pPreMultiplie
 DrawBuffer::DrawBuffer(const FrameBuffer* pFB)
 {
 	assert( pFB );
-	Resize(pFB->GetWidth(),pFB->GetHeight(),pFB->GetPixelSize(),false,false);
-	// Make sure my code created an optimal native format draw buffer.
-	assert( pFB->GetIsNativeFormat(*this) );
+	Resize(pFB->GetWidth(),pFB->GetHeight(),false,false);
 }
 
 DrawBuffer::DrawBuffer() :
@@ -1235,6 +1228,13 @@ void FrameBuffer::OnApplicationExitRequest()
 
 void FrameBuffer::Present(const DrawBuffer& pImage)
 {
+#ifdef NDEBUG
+	#define DBG_REPORT_PRESENT_SPEED(MESSAGE__){}
+#else
+	#define DBG_REPORT_PRESENT_SPEED(MESSAGE__)if( mVerbose && mReportedPresentSpeed == false ){mReportedPresentSpeed = true;std::clog << MESSAGE__;}
+#endif
+
+
 	// When optimized by compiler these const vars will
 	// all move to generate the same code as if I made it all one line and unreadable!
 	// Trust your optimizer. :)
@@ -1244,47 +1244,36 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 
 	if( GetIsNativeFormat(pImage) )
 	{// Early out...
+		DBG_REPORT_PRESENT_SPEED("Optimal frame buffer copy mode taken\n");
+
 		// Copy mDisplayBufferSize bytes, not the number of source, then we can't over flow what we have to write to.
 		memcpy(mDisplayBuffer,pImage.mPixels.data(),mDisplayBufferSize);
-
-#ifndef NDEBUG
-		if( mVerbose && mReportedPresentSpeed == false )
-		{
-			mReportedPresentSpeed = true;
-			std::clog << "Optimal frame buffer copy mode taken\n";
-		}
-#endif
 	}
 	else if( mDisplayBufferPixelSize == 2 )
 	{
-		uint16_t* dst = (uint16_t*)(mDisplayBuffer);
+		DBG_REPORT_PRESENT_SPEED("Slow 16Bit frame buffer copy mode taken\n");
+		u_int8_t* dst = (u_int8_t*)(mDisplayBuffer);
 		const u_int8_t* src = pImage.mPixels.data();
 		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 		{
 			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize() )
 			{
-				const uint16_t b = src[0] >> 3;
-				const uint16_t g = src[1] >> 2;
-				const uint16_t r = src[2] >> 3;
+				const uint16_t b = src[BLUE_PIXEL_INDEX] >> 3;
+				const uint16_t g = src[GREEN_PIXEL_INDEX] >> 2;
+				const uint16_t r = src[RED_PIXEL_INDEX] >> 3;
 
 				const uint16_t pixel = (r << RedShift) | (g << GreenShift) | (b << BlueShift);
 
 				assert( (y*mDisplayBufferStride) + x < mDisplayBufferSize );
 
-				dst[x] = pixel;
+				((uint16_t*)dst)[x] = pixel;
 			}
 		}
-
-#ifndef NDEBUG
-		if( mVerbose && mReportedPresentSpeed == false )
-		{
-			mReportedPresentSpeed = true;
-			std::clog << "Slow 16Bit frame buffer copy mode taken\n";
-		}
-#endif
 	}
 	else
 	{
+		DBG_REPORT_PRESENT_SPEED("Sub optimal scanline frame buffer copy mode taken\n");
+
 		const size_t RED_OFFSET = (RedShift/8);
 		const size_t GREEN_OFFSET = (GreenShift/8);
 		const size_t BLUE_OFFSET = (BlueShift/8);
@@ -1306,14 +1295,6 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 				pixel[ RED_OFFSET ]		= src[2];
 			}
 		}
-
-#ifndef NDEBUG
-		if( mVerbose && mReportedPresentSpeed == false )
-		{
-			mReportedPresentSpeed = true;
-			std::clog << "Sub optimal scanline frame buffer copy mode taken\n";
-		}
-#endif
 	}
 
 	// Now do event processing.

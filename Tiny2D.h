@@ -121,6 +121,7 @@ class FrameBuffer;
  * This can be used to simply hold an image as well as creating new images from primitive calls.
  * This images can then be presented to the display buffer for viewing by the user.
  * This is the object that most of your interations will be with.
+ * Buffer is always 8 bits per channel. So if your display is 16bit then present maybe slow because of the depth conversion on present.
  */
 class DrawBuffer
 {
@@ -129,22 +130,18 @@ public:
 	std::vector<uint8_t> mPixels;
 
 	/**
-	 * @brief Construct a new Tiny Image object
-	 */
-	DrawBuffer(int pWidth, int pHeight, size_t pPixelSize,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
-
-	/**
 	 * @brief Construct a new Tiny Image object assumes stride is width * height * 3 or 4 bytes based on alpha.
 	 */
 	DrawBuffer(int pWidth, int pHeight,bool pHasAlpha = false,bool pPreMultipliedAlpha = false);
 
 	/**
 	 * @brief Construct a draw buffer that is suitable for use as a render target.
-	 * This makes it the same size as dest so in present we can do a memcpy. Gives us a four fold speed up.
+	 * This makes it the same size as dest so in present we can do a memcpy, but only if frame buffer is 8 bits per channel. Gives us a four fold speed up.
 	 * For most chips, don't matter. But when you get to low speed, 40Mhz chips, every little helps.
 	 * This is about the only optimisation I will do. I expect people to use this by creating offscreen buffers
 	 * that only get updated when something changes and composite the changes together at end of frame.
-	 * So most of the time all the rendering is done is to make sure the display has been updated. Just incase TTY had put something up.
+	 * So most of the time all the rendering is done is to make sure the display has been updated. Just in case TTY had put something up.
+	 * If frame buffer is 16bit then a conversion per pixel is needed. That is slower.
 	 * @param pFB 
 	 */
 	DrawBuffer(const FrameBuffer* pFB);

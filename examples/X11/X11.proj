@@ -22,6 +22,18 @@
                 "USE_X11_EMULATION"
             ]
         },
+		"debug":
+		{
+			"include":
+			[
+				"/usr/include/",
+				"../../"
+			],
+			"libs":
+			[
+				"stdc++"
+			]
+		},
         "x11": {
             "default": true,
             "optimisation": "0",

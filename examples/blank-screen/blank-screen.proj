@@ -19,6 +19,18 @@
                 "RELEASE_BUILD"
             ]
         },
+		"debug":
+		{
+			"include":
+			[
+				"/usr/include/",
+				"../../"
+			],
+			"libs":
+			[
+				"stdc++"
+			]
+		},
 		"x11":
 		{
             "optimisation": "0",
