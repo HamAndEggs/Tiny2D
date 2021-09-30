@@ -1090,11 +1090,12 @@ FrameBuffer* FrameBuffer::Open(int pCreationFlags)
 		delete newX11;
 	}
 #else
+	const bool verbose = (pCreationFlags&VERBOSE_MESSAGES) != 0;
 	// Open the file for reading and writing
 	int File = open("/dev/fb0", O_RDWR);
 	if(File)
 	{
-		if(pVerbose)
+		if(verbose)
 		{
 			std::cout << "The framebuffer device was opened successfully.\n";
 		}
@@ -1103,7 +1104,7 @@ FrameBuffer* FrameBuffer::Open(int pCreationFlags)
 		struct fb_fix_screeninfo finfo;
 		if( ioctl(File, FBIOGET_FSCREENINFO, &finfo) )
 		{
-			if(pVerbose)
+			if(verbose)
 			{
 				std::cerr << "Error reading fixed information.\n";
 			}
@@ -1114,14 +1115,14 @@ FrameBuffer* FrameBuffer::Open(int pCreationFlags)
 			struct fb_var_screeninfo vinfo;
 			if( ioctl(File, FBIOGET_VSCREENINFO, &vinfo) )
 			{
-				if(pVerbose)
+				if(verbose)
 				{
 					std::cerr << "Error reading variable information.\n";
 				}
 			}
 			else
 			{
-				if(pVerbose)
+				if(verbose)
 				{
 					std::cout << "Display size: " << vinfo.xres << "x" << vinfo.yres << ", " << vinfo.bits_per_pixel << "bpp\n";
 					std::cout << "Frame buffer info: Size " << finfo.smem_len << " line length " << finfo.line_length << '\n';
@@ -1144,7 +1145,7 @@ FrameBuffer* FrameBuffer::Open(int pCreationFlags)
 	if( newFrameBuffer == NULL )
 	{
 		close(File);
-		if(pVerbose)
+		if(verbose)
 		{
 			std::cerr << "Error: cannot open framebuffer device.\n";
 		}
@@ -1175,9 +1176,10 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeni
 
 	// Try to connect to a mouse. But only if not X11
 #ifndef USE_X11_EMULATION
+	const bool verbose = (pCreationFlags&VERBOSE_MESSAGES) != 0;
 	const char* MouseDeviceName = "/dev/input/event0";
 	mPointer.mDevice = open(MouseDeviceName,O_RDONLY|O_NONBLOCK);
-	if( pVerbose )
+	if( verbose )
 	{
 		if(  mPointer.mDevice >  0 )
 		{

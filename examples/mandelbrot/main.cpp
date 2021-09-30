@@ -96,7 +96,7 @@ void Render(float pZoom,tiny2d::DrawBuffer& RT)
 
 int main(int argc, char *argv[])
 {	
-	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(true);
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(tiny2d::FrameBuffer::VERBOSE_MESSAGES);
 	if( !FB )
 		return 1;
 
