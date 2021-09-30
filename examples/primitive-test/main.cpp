@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[])
 {	
-	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(tiny2d::FrameBuffer::VERBOSE_MESSAGES | tiny2d::FrameBuffer::DISPLAY_ROTATED_90);
+	tiny2d::FrameBuffer* FB = tiny2d::FrameBuffer::Open(tiny2d::FrameBuffer::VERBOSE_MESSAGES | tiny2d::FrameBuffer::DISPLAY_ROTATED_270);
 	if( !FB )
 		return 1;
 
