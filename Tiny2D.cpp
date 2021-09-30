@@ -1278,27 +1278,61 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 			break;
 
 		case DISPLAY_ROTATED_90:
+			for( int y = 0 ; y < mWidth ; y++ )
+			{
+				u_int8_t* pixel = dst + (y*(mDisplayBufferPixelSize)) + (mDisplayBufferStride*(mHeight-1));
+				src = pImage.mPixels.data() + (pImage.GetStride()*y);
+				for( int x = 0 ; x < mHeight ; x++, src += pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
+				{
+					const uint16_t b = src[BLUE_PIXEL_INDEX] >> 3;
+					const uint16_t g = src[GREEN_PIXEL_INDEX] >> 2;
+					const uint16_t r = src[RED_PIXEL_INDEX] >> 3;
+
+					const uint16_t rgb = (r << RedShift) | (g << GreenShift) | (b << BlueShift);
+
+					assert( (y*mDisplayBufferStride) + x < mDisplayBufferSize );
+
+					*((uint16_t*)pixel) = rgb;
+				}
+			}
 			break;
 
 		case DISPLAY_ROTATED_180:
+			dst += mDisplayBufferSize - (mDisplayBufferPixelSize*1);
+			for( int y = 0 ; y < mHeight ; y++, dst -= mDisplayBufferStride )
+			{
+				u_int8_t* pixel = dst;
+				for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize(), pixel -= mDisplayBufferPixelSize )
+				{
+					const uint16_t b = src[BLUE_PIXEL_INDEX] >> 3;
+					const uint16_t g = src[GREEN_PIXEL_INDEX] >> 2;
+					const uint16_t r = src[RED_PIXEL_INDEX] >> 3;
+
+					const uint16_t rgb = (r << RedShift) | (g << GreenShift) | (b << BlueShift);
+
+					assert( (y*mDisplayBufferStride) + x < mDisplayBufferSize );
+
+					*((uint16_t*)pixel) = rgb;
+				}
+			}
 			break;
 
 		case DISPLAY_ROTATED_270:
 			for( int y = 0 ; y < mWidth ; y++ )
 			{
 				u_int8_t* pixel = dst + (y*(mDisplayBufferPixelSize)) + (mDisplayBufferStride*(mHeight-1));
-				src = pImage.mPixels.data() + (pImage.GetStride()*y);
-				for( int x = 0 ; x < mHeight ; x++, src += pImage.GetPixelSize(), pixel -= mDisplayBufferStride )				
+				src = pImage.mPixels.data() + (pImage.GetStride()*(mWidth-y));
+				for( int x = 0 ; x < mHeight ; x++, src -= pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
 				{
 					const uint16_t b = src[BLUE_PIXEL_INDEX] >> 3;
 					const uint16_t g = src[GREEN_PIXEL_INDEX] >> 2;
 					const uint16_t r = src[RED_PIXEL_INDEX] >> 3;
 
-					const uint16_t pixel = (r << RedShift) | (g << GreenShift) | (b << BlueShift);
+					const uint16_t rgb = (r << RedShift) | (g << GreenShift) | (b << BlueShift);
 
 					assert( (y*mDisplayBufferStride) + x < mDisplayBufferSize );
 
-					((uint16_t*)dst)[x] = pixel;
+					*((uint16_t*)pixel) = rgb;
 				}
 			}
 			break;
