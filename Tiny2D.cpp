@@ -1074,15 +1074,15 @@ struct X11FrameBufferEmulation
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // FrameBuffer Implementation.
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-FrameBuffer* FrameBuffer::Open(bool pVerbose)
+FrameBuffer* FrameBuffer::Open(int pCreationFlags)
 {
 	FrameBuffer* newFrameBuffer = NULL;
 
 #ifdef USE_X11_EMULATION
 	X11FrameBufferEmulation* newX11 = new X11FrameBufferEmulation();
-	if( newX11->Open(pVerbose) )
+	if( newX11->Open(pCreationFlags) )
 	{
-		newFrameBuffer = new FrameBuffer(0,newX11->mDisplayBuffer,newX11->mFixInfo,newX11->mVarInfo,pVerbose);
+		newFrameBuffer = new FrameBuffer(0,newX11->mDisplayBuffer,newX11->mFixInfo,newX11->mVarInfo,pCreationFlags);
 		newFrameBuffer->mX11 = newX11;
 	}
 	else
@@ -1135,7 +1135,7 @@ FrameBuffer* FrameBuffer::Open(bool pVerbose)
 				assert(DisplayRam);
 				if( DisplayRam != NULL )
 				{
-					newFrameBuffer = new FrameBuffer(File,DisplayRam,finfo,vinfo,pVerbose);					
+					newFrameBuffer = new FrameBuffer(File,DisplayRam,finfo,vinfo,pCreationFlags);					
 				}
 			}
 		}
@@ -1154,7 +1154,7 @@ FrameBuffer* FrameBuffer::Open(bool pVerbose)
 	return newFrameBuffer;
 }
 
-FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose):
+FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,int pCreationFlags):
 	mWidth(pScreenInfo.xres),
 	mHeight(pScreenInfo.yres),
 
@@ -1165,7 +1165,8 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeni
 	mDisplayBuffer(pDisplayBuffer),
 
 	mVariableScreenInfo(pScreenInfo),
-	mVerbose(pVerbose)
+	mVerbose( (pCreationFlags&VERBOSE_MESSAGES) != 0 ),
+	mRotation(pCreationFlags&(3<<1))
 {
 	FrameBuffer::mKeepGoing = true;
 
@@ -1281,19 +1282,79 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 		assert( mDisplayBufferPixelSize == 3 || mDisplayBufferPixelSize == 4 );
 		u_int8_t* dst = mDisplayBuffer;
 		const u_int8_t* src = pImage.mPixels.data();
-		for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
-		{
-			u_int8_t* pixel = dst;
-			for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize(), pixel += mDisplayBufferPixelSize )
-			{
-				assert( pixel + RED_OFFSET < mDisplayBuffer + mDisplayBufferSize );
-				assert( pixel + GREEN_OFFSET < mDisplayBuffer + mDisplayBufferSize );
-				assert( pixel + BLUE_OFFSET < mDisplayBuffer + mDisplayBufferSize );
 
-				pixel[ BLUE_OFFSET ]	= src[0];
-				pixel[ GREEN_OFFSET ]	= src[1];
-				pixel[ RED_OFFSET ]		= src[2];
+		switch( mRotation )
+		{
+		case DISPLAY_ROTATED_0:
+			for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
+			{
+				u_int8_t* pixel = dst;
+				for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize(), pixel += mDisplayBufferPixelSize )
+				{
+					assert( pixel + RED_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+					assert( pixel + GREEN_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+					assert( pixel + BLUE_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+
+					pixel[ BLUE_OFFSET ]	= src[0];
+					pixel[ GREEN_OFFSET ]	= src[1];
+					pixel[ RED_OFFSET ]		= src[2];
+				}
 			}
+			break;
+
+		case DISPLAY_ROTATED_90:
+			for( int y = 0 ; y < mWidth ; y++ )
+			{
+				u_int8_t* pixel = dst + (y*(mDisplayBufferPixelSize)) + (mDisplayBufferStride*(mHeight-1));
+				src = pImage.mPixels.data() + (pImage.GetStride()*y);
+				for( int x = 0 ; x < mHeight ; x++, src += pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
+				{
+					assert( pixel + RED_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+					assert( pixel + GREEN_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+					assert( pixel + BLUE_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+
+					pixel[ BLUE_OFFSET ]	= src[0];
+					pixel[ GREEN_OFFSET ]	= src[1];
+					pixel[ RED_OFFSET ]		= src[2];
+				}
+			}
+			break;
+
+		case DISPLAY_ROTATED_180:
+			dst += mDisplayBufferSize - (mDisplayBufferPixelSize*1);
+			for( int y = 0 ; y < mHeight ; y++, dst -= mDisplayBufferStride )
+			{
+				u_int8_t* pixel = dst;
+				for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize(), pixel -= mDisplayBufferPixelSize )
+				{
+					assert( pixel + RED_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+					assert( pixel + GREEN_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+					assert( pixel + BLUE_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+
+					pixel[ BLUE_OFFSET ]	= src[0];
+					pixel[ GREEN_OFFSET ]	= src[1];
+					pixel[ RED_OFFSET ]		= src[2];
+				}
+			}
+			break;
+
+		case DISPLAY_ROTATED_270:
+			for( int y = 0 ; y < mWidth ; y++ )
+			{
+				u_int8_t* pixel = dst + (y*(mDisplayBufferPixelSize)) + (mDisplayBufferStride*(mHeight-1));
+				src = pImage.mPixels.data() + (pImage.GetStride()*(mWidth-y));
+				for( int x = 0 ; x < mHeight ; x++, src -= pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
+				{
+					assert( pixel + RED_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+					assert( pixel + GREEN_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+					assert( pixel + BLUE_OFFSET < mDisplayBuffer + mDisplayBufferSize );
+
+					pixel[ BLUE_OFFSET ]	= src[0];
+					pixel[ GREEN_OFFSET ]	= src[1];
+					pixel[ RED_OFFSET ]		= src[2];
+				}
+			}
+			break;
 		}
 	}
 

@@ -417,6 +417,18 @@ public:
 
 	typedef std::function<void(const SystemEventData& pEvent)> SystemEventHandler;
 
+	enum OPEN_FLAGS
+	{
+		VERBOSE_MESSAGES = (1<<0),	//!< get debugging information as the object is created.
+
+		// Rotatoin is respect of how the physical screen is rotated. And clockwise.
+		// So if your physical device has been rotated 90 degrees clockwise to get the image the right way up use OPEN_ROTATE_90
+		DISPLAY_ROTATED_0 = (0<<1),
+		DISPLAY_ROTATED_90 = (1<<1),
+		DISPLAY_ROTATED_180 = (2<<1),
+		DISPLAY_ROTATED_270 = (3<<1),
+	};
+
 	/**
 	 * @brief Creates and opens a FrameBuffer object.
 	 * If the OS does not support the frame buffer driver or there is some other error,
@@ -425,10 +437,10 @@ public:
 	 * This makes the code very simple as the colour space conversion is only done when the
 	 * offscreen buffer is copied to the display.
 	 * 
-	 * @param pVerbose get debugging information as the object is created.
+	 * @param pCreationFlags Flags to change the state of the display buffer. Making display rotate may slow down present function. But on some hardware only option.
 	 * @return FrameBuffer* 
 	 */
-	static FrameBuffer* Open(bool pVerbose = false);
+	static FrameBuffer* Open(int pCreationFlags = 0);
 
 	/**
 	 * @brief Clean up code. You must delete your object on exit!
@@ -446,12 +458,12 @@ public:
 	/**
 		@brief Returns the width of the frame buffer.
 	*/
-	int GetWidth()const{return mWidth;}
+	int GetWidth()const{return (mRotation == DISPLAY_ROTATED_0 || mRotation == DISPLAY_ROTATED_180)?mWidth:mHeight;}
 
 	/**
 		@brief Returns the height of the frame buffer.
 	*/
-	int GetHeight()const{return mHeight;}
+	int GetHeight()const{return (mRotation == DISPLAY_ROTATED_0 || mRotation == DISPLAY_ROTATED_180)?mHeight:mWidth;}
 
 	/**
 	 * @brief Get the byte size of a pixel
@@ -470,7 +482,8 @@ public:
 	{
 		return	mDisplayBufferPixelSize == pBuffer.GetPixelSize() &&
 				mDisplayBufferStride == pBuffer.GetStride() &&
-				mDisplayBufferSize <= pBuffer.mPixels.size();
+				mDisplayBufferSize <= pBuffer.mPixels.size() &&
+				mRotation == DISPLAY_ROTATED_0;
 	}
 
 	/**
@@ -510,7 +523,7 @@ private:
 	/**
 	 * @brief Construct a new Frame Buffer object
 	 */
-	FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,bool pVerbose);
+	FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeninfo pFixInfo,struct fb_var_screeninfo pScreenInfo,int pCreationFlags);
 
 	/**
 	 * @brief Check for system events that the application my want.
@@ -534,6 +547,7 @@ private:
 
 	const struct fb_var_screeninfo mVariableScreenInfo;
 	const bool mVerbose;
+	const int mRotation;
 	bool mReportedPresentSpeed = false; //!< Used for verbose mode, will tell you the present screen route taken when on using linux frame buffer device.
 
 	/**
