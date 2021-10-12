@@ -296,6 +296,12 @@ public:
 	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
 	/**
+	 * @brief Draws a line of 'pWidth' pixels wide. If pWidth is < 1 then 1 is assumed.
+	 * Will take a short cut if the line 1 pixel width, horizontal or vertical.
+	 */
+	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,int pWidth,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+
+	/**
 	 * @brief Draws a circle using the Midpoint algorithm.
 	 * https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
 	 */
@@ -421,12 +427,11 @@ public:
 	{
 		VERBOSE_MESSAGES = (1<<0),	//!< get debugging information as the object is created.
 
-		// Rotatoin is respect of how the physical screen is rotated. And clockwise.
-		// So if your physical device has been rotated 90 degrees clockwise to get the image the right way up use OPEN_ROTATE_90
-		DISPLAY_ROTATED_0 = (0<<1),
-		DISPLAY_ROTATED_90 = (1<<1),
-		DISPLAY_ROTATED_180 = (2<<1),
-		DISPLAY_ROTATED_270 = (3<<1),
+		ROTATE_FRAME_BUFFER_90		= (1<<1),		//!< Rotates clockwise.
+		ROTATE_FRAME_BUFFER_180		= (1<<2),		//!< Rotates clockwise.
+		ROTATE_FRAME_BUFFER_270		= (1<<3),		//!< Rotates clockwise.
+		ROTATE_FRAME_PORTRATE		= (1<<4),		//!< If the hardware reports a landscape mode (width > height)  will apply a 90 degree rotation
+		ROTATE_FRAME_LANDSCAPE		= (1<<5),		//!< If the hardware reports a portrate mode (width < height) will apply a 90 degree rotation
 	};
 
 	/**
@@ -458,12 +463,12 @@ public:
 	/**
 		@brief Returns the width of the frame buffer.
 	*/
-	int GetWidth()const{return (mRotation == DISPLAY_ROTATED_0 || mRotation == DISPLAY_ROTATED_180)?mWidth:mHeight;}
+	int GetWidth()const{return (mRotation == FRAME_BUFFER_ROTATION_0 || mRotation == FRAME_BUFFER_ROTATION_180)?mWidth:mHeight;}
 
 	/**
 		@brief Returns the height of the frame buffer.
 	*/
-	int GetHeight()const{return (mRotation == DISPLAY_ROTATED_0 || mRotation == DISPLAY_ROTATED_180)?mHeight:mWidth;}
+	int GetHeight()const{return (mRotation == FRAME_BUFFER_ROTATION_0 || mRotation == FRAME_BUFFER_ROTATION_180)?mHeight:mWidth;}
 
 	/**
 	 * @brief Get the byte size of a pixel
@@ -483,7 +488,7 @@ public:
 		return	mDisplayBufferPixelSize == pBuffer.GetPixelSize() &&
 				mDisplayBufferStride == pBuffer.GetStride() &&
 				mDisplayBufferSize <= pBuffer.mPixels.size() &&
-				mRotation == DISPLAY_ROTATED_0;
+				mRotation == FRAME_BUFFER_ROTATION_0;
 	}
 
 	/**
@@ -519,6 +524,13 @@ public:
 	void Present(const DrawBuffer& pImage);
 
 private:
+	enum FrameBufferRotation
+	{
+		FRAME_BUFFER_ROTATION_0,
+		FRAME_BUFFER_ROTATION_90,
+		FRAME_BUFFER_ROTATION_180,
+		FRAME_BUFFER_ROTATION_270
+	};
 
 	/**
 	 * @brief Construct a new Frame Buffer object
@@ -532,10 +544,49 @@ private:
 
 	/**
 	 * @brief Handle ctrl + c event.
-	 * 
-	 * @param SigNum 
 	 */
 	static void CtrlHandler(int SigNum);
+
+	/**
+	 * @brief Get the frame buffer rotation From creation flags
+	 */
+	FrameBufferRotation GetRotationFromCreationFlags(int pCreationFlags,int pWidth,int pHeight)const
+	{
+		if( pCreationFlags&ROTATE_FRAME_LANDSCAPE )
+		{
+			if( pWidth < pHeight )
+				return FRAME_BUFFER_ROTATION_90;
+			return FRAME_BUFFER_ROTATION_0;
+		}
+
+		if( pCreationFlags&ROTATE_FRAME_PORTRATE )
+		{
+			if( pWidth < pHeight )
+				return FRAME_BUFFER_ROTATION_0;
+			return FRAME_BUFFER_ROTATION_90;
+		}
+
+		if( pCreationFlags&ROTATE_FRAME_PORTRATE )
+		{
+			if( pWidth < pHeight )
+				return FRAME_BUFFER_ROTATION_90;
+			return FRAME_BUFFER_ROTATION_0;
+		}
+
+		if( pCreationFlags&ROTATE_FRAME_BUFFER_90 )
+			return FRAME_BUFFER_ROTATION_90;
+
+		if( pCreationFlags&ROTATE_FRAME_BUFFER_180 )
+			return FRAME_BUFFER_ROTATION_180;
+
+		if( pCreationFlags&ROTATE_FRAME_BUFFER_270 )
+			return FRAME_BUFFER_ROTATION_270;
+
+		return FRAME_BUFFER_ROTATION_0;
+	}
+
+
+
 
 	const int mWidth,mHeight;
 
@@ -547,7 +598,7 @@ private:
 
 	const struct fb_var_screeninfo mVariableScreenInfo;
 	const bool mVerbose;
-	const int mRotation;
+	const FrameBufferRotation mRotation;
 	bool mReportedPresentSpeed = false; //!< Used for verbose mode, will tell you the present screen route taken when on using linux frame buffer device.
 
 	/**

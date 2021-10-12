@@ -548,6 +548,111 @@ void DrawBuffer::DrawLine(int pFromX,int pFromY,int pToX,int pToY,uint8_t pRed,u
 		DrawLineBresenham(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue);
 }
 
+void DrawBuffer::DrawLine(int pFromX,int pFromY,int pToX,int pToY,int pWidth,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	// If one or less pixel width then draw normal line quickly.
+	if( pWidth < 2 )
+	{
+		DrawLine(pFromX,pFromY,pToX,pToY,pRed,pGreen,pBlue);
+	}
+	else if( pFromX == pToX )
+	{
+		// Just do a box.
+		FillRectangle(pFromX - (pWidth/2),pFromY,pToX + (pWidth/2),pToY,pRed,pGreen,pBlue);
+	}
+	else if( pFromY == pToY )
+	{
+		FillRectangle(pFromX,pFromY - (pWidth/2),pToX,pToY + (pWidth/2),pRed,pGreen,pBlue);
+	}
+	else
+	{
+		// Do it the hard way...
+		// Deals with all 8 quadrants.
+		int deltax = pToX - pFromX;	// The difference between the x's
+		int deltay = pToY - pFromY;	// The difference between the y's	
+		int x = pFromX;				// Start x off at the first pixel
+		int y = pFromY;				// Start y off at the first pixel
+
+		int xinc1 = 1;
+		int xinc2 = 1;
+		int yinc1 = 1;
+		int yinc2 = 1;
+
+		if( deltax < 0 )
+		{// The x-values are decreasing
+			deltax = -deltax;
+			xinc1 = -1;
+			xinc2 = -1;
+		}
+
+		if( deltay < 0 )
+		{// The y-values are decreasing
+			deltay = -deltay;
+			yinc1 = -1;
+			yinc2 = -1;
+		}
+
+		int den,num,numadd,numpixels,curpixel;
+		if( deltax >= deltay )
+		{// There is at least one x-value for every y-value
+			xinc1 = 0;	// Don't change the x when numerator >= denominator
+			yinc2 = 0;	// Don't change the y for every iteration
+			den = deltax;
+			num = deltax>>1;
+			numadd = deltay;
+			numpixels = deltax;// There are more x-values than y-values
+		}
+		else
+		{ // There is at least one y-value for every x-value
+			xinc2 = 0;	// Don't change the x for every iteration
+			yinc1 = 0;	// Don't change the y when numerator >= denominator
+			den = deltay;
+			num = deltay>>1;
+			numadd = deltax;
+			numpixels = deltay;// There are more y-values than x-values
+		}
+
+//		pWidth /= 2;
+		x -= pWidth/2;
+		y -= pWidth/2;
+		for( curpixel = 0 ; curpixel <= numpixels ; curpixel++ )
+		{
+			if( x > -1 && x < mWidth && y > -1 && y < mHeight )
+			{
+				for( int ly = 0 ; ly < pWidth ; ly++ )
+				{
+					uint8_t *dest = mPixels.data() + (x * mPixelSize) + ((y+ly) * mStride);
+					if( mHasAlpha )
+					{
+						for( int lx = 0 ; lx < pWidth ; lx++, dest += mPixelSize )
+						{
+							WRITE_RGB_TO_PIXEL(dest,pRed,pGreen,pBlue);
+							dest[3] = 255;
+						}
+					}
+					else
+					{
+						for( int lx = 0 ; lx < pWidth ; lx++, dest += mPixelSize )
+						{
+							WRITE_RGB_TO_PIXEL(dest,pRed,pGreen,pBlue);
+						}
+					}
+				}
+			}
+
+			num += numadd;	// Increase the numerator by the top of the fraction
+			if (num >= den)	// Check if numerator >= denominator
+			{
+				num -= den;	// Calculate the new numerator value
+				x += xinc1;	// Change the x as appropriate
+				y += yinc1;	// Change the y as appropriate
+			}
+			x += xinc2;		// Change the x as appropriate
+			y += yinc2;		// Change the y as appropriate
+		}
+	}
+}
+
 void DrawBuffer::DrawCircle(int pCenterX,int pCenterY,int pRadius,uint8_t pRed,uint8_t pGreen,uint8_t pBlue,uint8_t pAlpha)
 {
     int x = pRadius-1;
@@ -1167,7 +1272,7 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeni
 
 	mVariableScreenInfo(pScreenInfo),
 	mVerbose( (pCreationFlags&VERBOSE_MESSAGES) != 0 ),
-	mRotation(pCreationFlags&(3<<1))
+	mRotation(GetRotationFromCreationFlags(pCreationFlags,mWidth,mHeight))
 {
 	FrameBuffer::mKeepGoing = true;
 
@@ -1176,10 +1281,9 @@ FrameBuffer::FrameBuffer(int pFile,uint8_t* pDisplayBuffer,struct fb_fix_screeni
 
 	// Try to connect to a mouse. But only if not X11
 #ifndef USE_X11_EMULATION
-	const bool verbose = (pCreationFlags&VERBOSE_MESSAGES) != 0;
 	const char* MouseDeviceName = "/dev/input/event0";
 	mPointer.mDevice = open(MouseDeviceName,O_RDONLY|O_NONBLOCK);
-	if( verbose )
+	if( mVerbose )
 	{
 		if(  mPointer.mDevice >  0 )
 		{
@@ -1259,7 +1363,7 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 		const u_int8_t* src = pImage.mPixels.data();
 		switch( mRotation )
 		{
-		case DISPLAY_ROTATED_0:
+		case FRAME_BUFFER_ROTATION_0:
 			for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 			{
 				for( int x = 0 ; x < mWidth ; x++, src += pImage.GetPixelSize() )
@@ -1277,12 +1381,12 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 			}
 			break;
 
-		case DISPLAY_ROTATED_90:
+		case FRAME_BUFFER_ROTATION_90:
 			for( int y = 0 ; y < mWidth ; y++ )
 			{
 				u_int8_t* pixel = dst + (y*(mDisplayBufferPixelSize)) + (mDisplayBufferStride*(mHeight-1));
-				src = pImage.mPixels.data() + (pImage.GetStride()*y);
-				for( int x = 0 ; x < mHeight ; x++, src += pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
+				src = pImage.mPixels.data() + (pImage.GetStride()*(mWidth-y));
+				for( int x = 0 ; x < mHeight ; x++, src -= pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
 				{
 					const uint16_t b = src[BLUE_PIXEL_INDEX] >> 3;
 					const uint16_t g = src[GREEN_PIXEL_INDEX] >> 2;
@@ -1297,7 +1401,7 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 			}
 			break;
 
-		case DISPLAY_ROTATED_180:
+		case FRAME_BUFFER_ROTATION_180:
 			dst += mDisplayBufferSize - (mDisplayBufferPixelSize*1);
 			for( int y = 0 ; y < mHeight ; y++, dst -= mDisplayBufferStride )
 			{
@@ -1317,12 +1421,12 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 			}
 			break;
 
-		case DISPLAY_ROTATED_270:
+		case FRAME_BUFFER_ROTATION_270:
 			for( int y = 0 ; y < mWidth ; y++ )
 			{
 				u_int8_t* pixel = dst + (y*(mDisplayBufferPixelSize)) + (mDisplayBufferStride*(mHeight-1));
-				src = pImage.mPixels.data() + (pImage.GetStride()*(mWidth-y));
-				for( int x = 0 ; x < mHeight ; x++, src -= pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
+				src = pImage.mPixels.data() + (pImage.GetStride()*y);
+				for( int x = 0 ; x < mHeight ; x++, src += pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
 				{
 					const uint16_t b = src[BLUE_PIXEL_INDEX] >> 3;
 					const uint16_t g = src[GREEN_PIXEL_INDEX] >> 2;
@@ -1352,7 +1456,7 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 
 		switch( mRotation )
 		{
-		case DISPLAY_ROTATED_0:
+		case FRAME_BUFFER_ROTATION_0:
 			for( int y = 0 ; y < mHeight ; y++, dst += mDisplayBufferStride )
 			{
 				u_int8_t* pixel = dst;
@@ -1369,12 +1473,12 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 			}
 			break;
 
-		case DISPLAY_ROTATED_90:
+		case FRAME_BUFFER_ROTATION_90:
 			for( int y = 0 ; y < mWidth ; y++ )
 			{
 				u_int8_t* pixel = dst + (y*(mDisplayBufferPixelSize)) + (mDisplayBufferStride*(mHeight-1));
-				src = pImage.mPixels.data() + (pImage.GetStride()*y);
-				for( int x = 0 ; x < mHeight ; x++, src += pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
+				src = pImage.mPixels.data() + (pImage.GetStride()*(mWidth-y));
+				for( int x = 0 ; x < mHeight ; x++, src -= pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
 				{
 					assert( pixel + RED_OFFSET < mDisplayBuffer + mDisplayBufferSize );
 					assert( pixel + GREEN_OFFSET < mDisplayBuffer + mDisplayBufferSize );
@@ -1387,7 +1491,7 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 			}
 			break;
 
-		case DISPLAY_ROTATED_180:
+		case FRAME_BUFFER_ROTATION_180:
 			dst += mDisplayBufferSize - (mDisplayBufferPixelSize*1);
 			for( int y = 0 ; y < mHeight ; y++, dst -= mDisplayBufferStride )
 			{
@@ -1405,12 +1509,12 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 			}
 			break;
 
-		case DISPLAY_ROTATED_270:
+		case FRAME_BUFFER_ROTATION_270:
 			for( int y = 0 ; y < mWidth ; y++ )
 			{
 				u_int8_t* pixel = dst + (y*(mDisplayBufferPixelSize)) + (mDisplayBufferStride*(mHeight-1));
-				src = pImage.mPixels.data() + (pImage.GetStride()*(mWidth-y));
-				for( int x = 0 ; x < mHeight ; x++, src -= pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
+				src = pImage.mPixels.data() + (pImage.GetStride()*y);
+				for( int x = 0 ; x < mHeight ; x++, src += pImage.GetPixelSize(), pixel -= mDisplayBufferStride )
 				{
 					assert( pixel + RED_OFFSET < mDisplayBuffer + mDisplayBufferSize );
 					assert( pixel + GREEN_OFFSET < mDisplayBuffer + mDisplayBufferSize );
@@ -1421,8 +1525,7 @@ void FrameBuffer::Present(const DrawBuffer& pImage)
 					pixel[ RED_OFFSET ]		= src[2];
 				}
 			}
-			break;
-		}
+			break;		}
 	}
 
 	// Now do event processing.
