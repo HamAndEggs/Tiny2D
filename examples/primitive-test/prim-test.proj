@@ -32,7 +32,8 @@
 			],
 			"libs":
 			[
-				"stdc++"
+				"stdc++",
+				"m"
 			]
 		},
 		"x11":
@@ -51,7 +52,8 @@
 			[
 				"stdc++",
 				"pthread",
-				"X11"
+				"X11",
+				"m"
 			],
 			"define": [
 				"DEBUG_BUILD",
