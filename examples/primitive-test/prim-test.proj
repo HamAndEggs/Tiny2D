@@ -20,7 +20,8 @@
 			"libs":
 			[
 				"stdc++",
-				"pthread"
+				"pthread",
+				"m"
 			]
 		},
 		"debug":
