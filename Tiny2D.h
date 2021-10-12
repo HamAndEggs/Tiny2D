@@ -302,6 +302,13 @@ public:
 	void DrawLine(int pFromX,int pFromY,int pToX,int pToY,int pWidth,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
 
 	/**
+	 * @brief Draws linked lines of 'pWidth' pixels wide. If pWidth is < 1 then 1 is assumed.
+	 * The next line will continue where the last left off.
+	 * Will take a short cut if the line 1 pixel width, horizontal or vertical.
+	 */
+	void DrawLineList(const std::vector<std::array<int,2>>& pPoints,int pWidth,uint8_t pRed,uint8_t pGreen,uint8_t pBlue);
+
+	/**
 	 * @brief Draws a circle using the Midpoint algorithm.
 	 * https://en.wikipedia.org/wiki/Midpoint_circle_algorithm
 	 */

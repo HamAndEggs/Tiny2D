@@ -612,7 +612,6 @@ void DrawBuffer::DrawLine(int pFromX,int pFromY,int pToX,int pToY,int pWidth,uin
 			numpixels = deltay;// There are more y-values than x-values
 		}
 
-//		pWidth /= 2;
 		x -= pWidth/2;
 		y -= pWidth/2;
 		for( curpixel = 0 ; curpixel <= numpixels ; curpixel++ )
@@ -627,7 +626,7 @@ void DrawBuffer::DrawLine(int pFromX,int pFromY,int pToX,int pToY,int pWidth,uin
 						for( int lx = 0 ; lx < pWidth ; lx++, dest += mPixelSize )
 						{
 							WRITE_RGB_TO_PIXEL(dest,pRed,pGreen,pBlue);
-							dest[3] = 255;
+							dest[ALPHA_PIXEL_INDEX] = 255;
 						}
 					}
 					else
@@ -650,6 +649,14 @@ void DrawBuffer::DrawLine(int pFromX,int pFromY,int pToX,int pToY,int pWidth,uin
 			x += xinc2;		// Change the x as appropriate
 			y += yinc2;		// Change the y as appropriate
 		}
+	}
+}
+
+void DrawBuffer::DrawLineList(const std::vector<std::array<int,2>>& pPoints,int pWidth,uint8_t pRed,uint8_t pGreen,uint8_t pBlue)
+{
+	for( size_t n = 0 ; n < pPoints.size() - 1 ; n++ )
+	{
+		DrawLine(pPoints[n][0],pPoints[n][1],pPoints[n+1][0],pPoints[n+1][1],pWidth,pRed,pGreen,pBlue);
 	}
 }
 

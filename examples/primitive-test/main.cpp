@@ -129,28 +129,23 @@ int main(int argc, char *argv[])
 			RT.FillRoundedRectangle(cx-s,cy-s,cx+s,cy+s,17,90,100,110);
 			RT.DrawRoundedRectangle(cx-s,cy-s,cx+s,cy+s,17,0,0,0);
 
-			for( int z = 0 ; z < 2 ; z++ )
+			std::vector<std::array<int,2>> points;
+			float angle = rot;
+			const float angleStep = DegreeToRadian(360.0f) / 6.0f;
+
+			// Make the six points for the hexagon
+			for( int n = 0 ; n < 6 ; n++, angle += angleStep )
 			{
-				float angle = rot;
-				const float angleStep = DegreeToRadian(360.0f) / 6.0f;
+				const std::array<int,2> point = {
+					cx + ((int)(std::cos(angle) * 100.0f)),
+					cy + ((int)(std::sin(angle) * 100.0f))
+				};
 
-				int lx = cx + ((int)(std::cos(angle) * 100.0f));
-				int ly = cy + ((int)(std::sin(angle) * 100.0f));
-
-				angle += angleStep;
-				for( int n = 0 ; n < 6 ; n++, angle += angleStep )
-				{
-					const int x = cx + ((int)(std::cos(angle) * 100.0f));
-					const int y = cy + ((int)(std::sin(angle) * 100.0f));
-
-					if( z )
-						RT.DrawLine(lx,ly,x,y,5,255,255,255);
-					else
-						RT.DrawLine(lx,ly,x,y,9,0,0,0);
-					lx = x;
-					ly = y;
-				}
+				points.emplace_back(point);
 			}
+			points.emplace_back(points[0]);// Close the loop.
+			RT.DrawLineList(points,9,0,0,0);
+			RT.DrawLineList(points,5,255,255,255);
 
 			{
 				float angle = rot;
