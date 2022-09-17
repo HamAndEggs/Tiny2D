@@ -35,8 +35,8 @@
 		},
 		"x11":
 		{
-            "optimisation": "0",
-            "debug_level": "2",
+            "optimisation": "2",
+            "debug_level": "0",
             "warnings_as_errors": false,
             "enable_all_warnings": true,
             "fatal_errors": false,
